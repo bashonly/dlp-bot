@@ -43,7 +43,9 @@ class Git:
 
         self._base_args = []
         if repo_dir and repo_dir != '.':
-            self.repo_dir = str(pathlib.Path(repo_dir).resolve())
+            path = pathlib.Path(repo_dir).resolve()
+            path.mkdir(parents=True, exist_ok=True)
+            self.repo_dir = str(path)
             self._base_args.extend(['-C', self.repo_dir])
         else:
             self.repo_dir = str(pathlib.Path('.').resolve())
