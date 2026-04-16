@@ -50,7 +50,8 @@ jobs:
       - name: Checkout work repo (${{ matrix.repo }})
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
-          path: ${{ format('{0}/{1}', env.HEAD_OWNER, matrix.repo) }}
+          repository: ${{ format('{0}/{1}', env.HEAD_OWNER, matrix.repo) }}
+          path: ${{ matrix.repo }}
           fetch-depth: 0
           persist-credentials: true  # Needed to git-push
           # Need ONE of the following:
