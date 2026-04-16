@@ -178,8 +178,11 @@ def configure_parser(parser: argparse.ArgumentParser):
     )
     parser.add_argument(
         '--export-pr',
-        metavar='FILEPATH',
-        help='write the pull request body/description and commit message to the given filepath',
+        metavar='DIRPATH',
+        help=(
+            'if an output directory path is provided, then export '
+            'the pull request body and commit message to files in the given output directory'
+        ),
         type=pathlib.Path,
     )
     parser.add_argument(
@@ -297,9 +300,9 @@ def _real_run(args: argparse.Namespace):
         raise SuccessMessage(pull_request_url)
 
     if args.export_pr:
-        args.export_pr.parent.mkdir(parents=True, exist_ok=True)
-        args.export_pr.with_suffix('.bot.md').write_text(pr.body)
-        args.export_pr.with_suffix('.bot.txt').write_text(pr.commit_message)
+        args.export_pr.mkdir(parents=True, exist_ok=True)
+        (args.export_pr / 'pull-request.bot.md').write_text(pr.body)
+        (args.export_pr / 'commit-message.bot.txt').write_text(pr.commit_message)
     else:
         for row in table_a_raza(('action', 'old', 'new'), [
             (f'{action.owner}/{action.repo}', old.tag, new.tag)
