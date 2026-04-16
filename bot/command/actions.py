@@ -257,7 +257,6 @@ def _real_run(args: argparse.Namespace):
         git=git,
         pr=pr,
         exclude_newer=args.exclude_newer,
-        verbose=args.verbose,
     )
 
     workflows, all_updates = updater.update(
