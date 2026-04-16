@@ -49,6 +49,9 @@ class Git:
         else:
             self.repo_dir = str(pathlib.Path('.').resolve())
 
+        if not self.bot_version().startswith('git '):
+            raise GitError(f'invalid output from {self._exe}')
+
         if protocol:
             if protocol not in self._SUPPORTED_PROTOCOLS:
                 raise ValueError(f'{protocol} is not a supported git protocol')
@@ -58,9 +61,6 @@ class Git:
 
         self._origin_name = origin_name
         self._upstream_name = upstream_name
-
-        if not self.bot_version().startswith('git '):
-            raise GitError(f'invalid output from {self._exe}')
 
     def _determine_protocol(self, /) -> str:
         def any_remote_startswith(prefix: str) -> bool:
