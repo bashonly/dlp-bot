@@ -58,7 +58,8 @@ def configure_parser(parser: argparse.ArgumentParser):
         ),
     )
     parser.add_argument(
-        '-B', '--base',
+        '-B',
+        '--base',
         dest='base_label',
         metavar='OWNER[:REPO]:BRANCH',
         help=(
@@ -70,7 +71,8 @@ def configure_parser(parser: argparse.ArgumentParser):
         ),
     )
     parser.add_argument(
-        '-H', '--head',
+        '-H',
+        '--head',
         dest='head_label',
         default=DEFAULT_HEAD_LABEL,
         metavar='OWNER[:REPO]:BRANCH',
@@ -110,19 +112,13 @@ def configure_parser(parser: argparse.ArgumentParser):
         '--head-remote',
         metavar='REMOTE',
         default='origin',
-        help=(
-            'name of the head repository\'s git remote in the local repository clone. '
-            '(default: "origin")'
-        ),
+        help=('name of the head repository\'s git remote in the local repository clone. (default: "origin")'),
     )
     parser.add_argument(
         '--base-remote',
         metavar='REMOTE',
         default='upstream',
-        help=(
-            'name of the base repository\'s git remote in the local repository clone. '
-            '(default: "upstream")'
-        ),
+        help=('name of the base repository\'s git remote in the local repository clone. (default: "upstream")'),
     )
     parser.add_argument(
         '--exclude-newer',
@@ -211,7 +207,8 @@ def _real_run(args: argparse.Namespace):
     if yaml is None:
         raise ImportError(
             'the pyyaml package (yaml library) is required for workflows. '
-            'install the "workflows" extra to fulfill the requirements')
+            'install the "workflows" extra to fulfill the requirements'
+        )
 
     if not args.directory:
         if args.clone:
@@ -257,9 +254,7 @@ def _real_run(args: argparse.Namespace):
         exclude_newer=args.exclude_newer,
     )
 
-    formatted_addendum = safe_format(
-        args.commit_addendum or repo_info['commit_addendum'],
-        username=pr.head.owner)
+    formatted_addendum = safe_format(args.commit_addendum or repo_info['commit_addendum'], username=pr.head.owner)
 
     workflows, all_updates = updater.update(
         commit_type=args.commit_type or ('incremental' if args.pr else 'bulk'),
@@ -299,10 +294,10 @@ def _real_run(args: argparse.Namespace):
         (args.export_pr / 'pull-request.bot.md').write_text(pr.body)
         (args.export_pr / 'commit-message.bot.txt').write_text(pr.commit_message)
     else:
-        for row in table_a_raza(('action', 'old', 'new'), [
-            (f'{action.owner}/{action.repo}', old.tag, new.tag)
-            for action, (old, new) in all_updates.items()
-        ]):
+        for row in table_a_raza(
+            ('action', 'old', 'new'),
+            [(f'{action.owner}/{action.repo}', old.tag, new.tag) for action, (old, new) in all_updates.items()],
+        ):
             print(row)
 
 

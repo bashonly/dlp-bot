@@ -33,9 +33,7 @@ class Branch:
         for slot in self.__slots__:
             value = getattr(self, slot)
             if not isinstance(value, str):
-                raise TypeError(
-                    f'{type(self).__name__}.{slot} expects a string, '
-                    f'got {type(value).__name__!r}')
+                raise TypeError(f'{type(self).__name__}.{slot} expects a string, got {type(value).__name__!r}')
             if not value:
                 raise ValueError(f'{type(self).__name__}.{slot} value cannot be empty')
 
@@ -125,18 +123,19 @@ class GitHubBaseCaller:
         assert url.geturl().startswith(base_url), 'Invalid base_url and path combination'
         assert method in {None, 'DELETE', 'GET', 'PATCH', 'POST', 'PUT'}, f'Invalid HTTP method "{method}"'
 
-        qs = urllib.parse.urlencode({
-            **urllib.parse.parse_qs(url.query),
-            **filter_dict(query or {}),
-        }, True)
+        qs = urllib.parse.urlencode(
+            {
+                **urllib.parse.parse_qs(url.query),
+                **filter_dict(query or {}),
+            },
+            True,
+        )
 
         full_url = urllib.parse.urlunparse(url._replace(query=qs))
 
         for attempt in range(self.retries + 1):
             if self.verbose:
-                print(
-                    f'[{self._note}] {method or "GET"} {url.path}{"?" if qs else ""}{qs or ""}',
-                    file=sys.stderr)
+                print(f'[{self._note}] {method or "GET"} {url.path}{"?" if qs else ""}{qs or ""}', file=sys.stderr)
             try:
                 with request(full_url, data=data, headers=headers, method=method, timeout=self.timeout) as resp:
                     return json.load(resp)
@@ -151,8 +150,9 @@ class GitHubBaseCaller:
             except TimeoutError as error:
                 if attempt < self.retries:
                     print(
-                        f'[{self._note}] operation timed out, '
-                        f'retrying ({attempt + 1} of {self.retries})', file=sys.stderr)
+                        f'[{self._note}] operation timed out, retrying ({attempt + 1} of {self.retries})',
+                        file=sys.stderr,
+                    )
                     continue
                 raise GitHubError(f'[{type(error).__name__}] {error}')
 
@@ -173,12 +173,14 @@ class GitHubAPICaller(GitHubBaseCaller):
 
     @property
     def headers(self) -> dict[str, str]:
-        return filter_dict({
-            **super().headers,
-            'Accept': 'application/vnd.github+json',
-            'Authorization': f'Bearer {self._github_token}' if self._github_token else None,
-            'X-GitHub-Api-Version': '2026-03-10',
-        })
+        return filter_dict(
+            {
+                **super().headers,
+                'Accept': 'application/vnd.github+json',
+                'Authorization': f'Bearer {self._github_token}' if self._github_token else None,
+                'X-GitHub-Api-Version': '2026-03-10',
+            }
+        )
 
     def call(
         self,
@@ -196,13 +198,16 @@ class GitHubAPICaller(GitHubBaseCaller):
             path,
             query=query,
             data=json.dumps(body, separators=(',', ':')).encode() if body else None,
-            headers=filter_dict({
-                **self.headers,
-                'Content-Type': 'application/json' if body else None,
-                **(headers or {}),
-            }),
+            headers=filter_dict(
+                {
+                    **self.headers,
+                    'Content-Type': 'application/json' if body else None,
+                    **(headers or {}),
+                }
+            ),
             method=method,
-            status_check=status_check)
+            status_check=status_check,
+        )
 
     def paginator(
         self,
@@ -212,7 +217,6 @@ class GitHubAPICaller(GitHubBaseCaller):
         searches: list[dict[str, str | bool | int | float]] | None = None,
         **kwargs: str | bool | None,
     ) -> collections.abc.Iterator[dict[str, typing.Any]]:
-
         func_name = func.__name__
         assert func_name.startswith('list_'), f'{func_name} does not return a list'
         assert hasattr(func, '__self__'), f'{func_name} is not an instance method'
@@ -226,7 +230,6 @@ class GitHubAPICaller(GitHubBaseCaller):
         def filter_func(
             filter_dict: dict[str, str | bool | int | float],
         ) -> collections.abc.Callable[[dict[str, typing.Any]], bool]:
-
             def inner_func(
                 input_dict: dict[str, typing.Any],
             ) -> bool:
@@ -258,7 +261,6 @@ class GitHubAPICaller(GitHubBaseCaller):
         *args,
         **kwargs,
     ) -> list[dict[str, typing.Any]]:
-
         return list(self.paginator(*args, **kwargs))
 
     # Repositories: https://docs.github.com/en/rest/repos/repos?apiVersion=2026-03-10
@@ -318,11 +320,17 @@ class GitHubAPICaller(GitHubBaseCaller):
         @param default_branch_only:     (optional) fork only with the default branch if True
         @returns                        dict of info about the fork
         """
-        return self.call(f'/repos/{owner}/{repo}/forks', body=filter_dict({
-            'organization': organization,
-            'name': name,
-            'default_branch_only': default_branch_only,
-        }), method='POST')
+        return self.call(
+            f'/repos/{owner}/{repo}/forks',
+            body=filter_dict(
+                {
+                    'organization': organization,
+                    'name': name,
+                    'default_branch_only': default_branch_only,
+                }
+            ),
+            method='POST',
+        )
 
     # Releases: https://docs.github.com/en/rest/releases/releases?apiVersion=2026-03-10
 
@@ -345,9 +353,7 @@ class GitHubAPICaller(GitHubBaseCaller):
         @param page:                    (optional) page number (default: 1)
         @returns                        list of the repository's releases
         """
-        return self.call(
-            f'/repos/{owner}/{repo}/releases',
-            query={'per_page': per_page, 'page': page})
+        return self.call(f'/repos/{owner}/{repo}/releases', query={'per_page': per_page, 'page': page})
 
     def get_latest_release(self, /, owner: str, repo: str):
         """Get the latest release
@@ -372,8 +378,8 @@ class GitHubAPICaller(GitHubBaseCaller):
         @returns                        dict of info about the release for the given tag
         """
         result = self.call(
-            f'/repos/{owner}/{repo}/releases/tags/{tag_name}',
-            status_check=[404] if allow_miss else None)
+            f'/repos/{owner}/{repo}/releases/tags/{tag_name}', status_check=[404] if allow_miss else None
+        )
 
         if result is False:
             return {}
@@ -411,16 +417,22 @@ class GitHubAPICaller(GitHubBaseCaller):
         @param make_latest:             (optional) str: one of 'true' (default), 'false', 'legacy'
         @returns                        dict of info about the created release
         """
-        return self.call(f'/repos/{owner}/{repo}/releases', body=filter_dict({
-            'tag_name': tag_name,
-            'target_commitish': target_commitish,
-            'name': name,
-            'body': body,
-            'draft': draft,
-            'prerelease': prerelease,
-            'generate_release_notes': generate_release_notes,
-            'make_latest': make_latest,
-        }), method='POST')
+        return self.call(
+            f'/repos/{owner}/{repo}/releases',
+            body=filter_dict(
+                {
+                    'tag_name': tag_name,
+                    'target_commitish': target_commitish,
+                    'name': name,
+                    'body': body,
+                    'draft': draft,
+                    'prerelease': prerelease,
+                    'generate_release_notes': generate_release_notes,
+                    'make_latest': make_latest,
+                }
+            ),
+            method='POST',
+        )
 
     # Pull requests: https://docs.github.com/en/rest/pulls/pulls?apiVersion=2026-03-10
 
@@ -456,15 +468,21 @@ class GitHubAPICaller(GitHubBaseCaller):
         if owner == head.partition(':')[0] and not head_repo:
             raise ValueError('head_repo is required if the repo is a fork in the same organization')
 
-        return self.call(f'/repos/{owner}/{repo}/pulls', body=filter_dict({
-            'title': title,
-            'body': body,
-            'head': head,
-            'head_repo': head_repo,
-            'base': base,
-            'maintainer_can_modify': maintainer_can_modify,
-            'draft': draft,
-        }), method='POST')
+        return self.call(
+            f'/repos/{owner}/{repo}/pulls',
+            body=filter_dict(
+                {
+                    'title': title,
+                    'body': body,
+                    'head': head,
+                    'head_repo': head_repo,
+                    'base': base,
+                    'maintainer_can_modify': maintainer_can_modify,
+                    'draft': draft,
+                }
+            ),
+            method='POST',
+        )
 
     def update_pull_request(
         self,
@@ -493,13 +511,19 @@ class GitHubAPICaller(GitHubBaseCaller):
         @param maintainer_can_modify:   (optional) if maintainers can edit the PR
         @returns                        dict of info about the updated pull request
         """
-        return self.call(f'/repos/{owner}/{repo}/pulls/{pull_number}', body=filter_dict({
-            'title': title,
-            'body': body,
-            'state': state,
-            'base': base,
-            'maintainer_can_modify': maintainer_can_modify,
-        }), method='PATCH')
+        return self.call(
+            f'/repos/{owner}/{repo}/pulls/{pull_number}',
+            body=filter_dict(
+                {
+                    'title': title,
+                    'body': body,
+                    'state': state,
+                    'base': base,
+                    'maintainer_can_modify': maintainer_can_modify,
+                }
+            ),
+            method='PATCH',
+        )
 
     def list_pull_requests(
         self,
@@ -537,15 +561,18 @@ class GitHubAPICaller(GitHubBaseCaller):
         if direction and direction not in ('asc', 'desc'):
             raise ValueError(f'Invalid direction value: {direction}')
 
-        return self.call(f'/repos/{owner}/{repo}/pulls', query={
-            'state': state,
-            'head': head,
-            'base': base,
-            'sort': sort,
-            'direction': direction,
-            'per_page': per_page,
-            'page': page,
-        })
+        return self.call(
+            f'/repos/{owner}/{repo}/pulls',
+            query={
+                'state': state,
+                'head': head,
+                'base': base,
+                'sort': sort,
+                'direction': direction,
+                'per_page': per_page,
+                'page': page,
+            },
+        )
 
     def get_pull_request(self, /, owner: str, repo: str, pull_number: str):
         """Get a pull request
@@ -599,12 +626,18 @@ class GitHubAPICaller(GitHubBaseCaller):
         if merge_method and merge_method not in ('merge', 'squash', 'rebase'):
             raise ValueError(f'Invalid merge_method value: {merge_method}')
 
-        return self.call(f'/repos/{owner}/{repo}/pulls/{pull_number}/merge', body=filter_dict({
-            'commit_title': commit_title,
-            'commit_message': commit_message,
-            'sha': sha,
-            'merge_method': merge_method,
-        }), method='PUT')
+        return self.call(
+            f'/repos/{owner}/{repo}/pulls/{pull_number}/merge',
+            body=filter_dict(
+                {
+                    'commit_title': commit_title,
+                    'commit_message': commit_message,
+                    'sha': sha,
+                    'merge_method': merge_method,
+                }
+            ),
+            method='PUT',
+        )
 
     def update_pull_request_branch(
         self,
@@ -625,10 +658,14 @@ class GitHubAPICaller(GitHubBaseCaller):
         @param expected_head_sha:       (optional) SHA that PR head must match to allow merge
         @returns                        bool: True if successful, False if SHA didn't match PR head
         """
-        return bool(self.call(
-            f'/repos/{owner}/{repo}/pulls/{pull_number}/update-branch',
-            body=filter_dict({'expected_head_sha': expected_head_sha}),
-            method='PUT', status_check=[422] if expected_head_sha else None))
+        return bool(
+            self.call(
+                f'/repos/{owner}/{repo}/pulls/{pull_number}/update-branch',
+                body=filter_dict({'expected_head_sha': expected_head_sha}),
+                method='PUT',
+                status_check=[422] if expected_head_sha else None,
+            )
+        )
 
     # Git database => References: https://docs.github.com/en/rest/git/refs?apiVersion=2026-03-10
 
@@ -674,9 +711,7 @@ class GitHubAPICaller(GitHubBaseCaller):
         @param ref:                     git reference (i.e. heads/{branch} or tags/{tag})
         @returns                        boolean: True if deleted, False if not deleted
         """
-        return self.call(
-            f'/repos/{owner}/{repo}/git/refs/{ref}',
-            method='DELETE', status_check=[409, 422])
+        return self.call(f'/repos/{owner}/{repo}/git/refs/{ref}', method='DELETE', status_check=[409, 422])
 
     def delete_branch_by_name(self, /, owner: str, repo: str, branch_name: str) -> bool:
         """Delete a branch (by name)
@@ -735,11 +770,17 @@ class GitHubAPICaller(GitHubBaseCaller):
         @param commit_message:          (optional) commit message for the merge commit
         @returns                        dict of info about the resulting merge commit
         """
-        return self.call(f'/repos/{owner}/{repo}/merges', body=filter_dict({
-            'base': base,
-            'head': head,
-            'commit_message': commit_message,
-        }), method='POST')
+        return self.call(
+            f'/repos/{owner}/{repo}/merges',
+            body=filter_dict(
+                {
+                    'base': base,
+                    'head': head,
+                    'commit_message': commit_message,
+                }
+            ),
+            method='POST',
+        )
 
 
 class GitHubWebFetcher(GitHubBaseCaller):
@@ -760,7 +801,6 @@ class GitHubWebFetcher(GitHubBaseCaller):
         /,
         api: GitHubAPICaller,
     ) -> GitHubWebFetcher:
-
         return cls(
             retries=api.retries,
             timeout=api.timeout,
@@ -799,12 +839,9 @@ class GitHubPullRequest:
         github_token: str | None = None,
         verbose: bool = False,
     ):
-
         for branch in (base, head):
             if not isinstance(branch, AbsoluteBranch):
-                raise TypeError(
-                    f'{type(self).__name__} expected an AbsoluteBranch'
-                    f'object, got {type(branch).__name__}')
+                raise TypeError(f'{type(self).__name__} expected an AbsoluteBranchobject, got {type(branch).__name__}')
 
         self.base = base
         self.head = head
@@ -838,7 +875,6 @@ class GitHubPullRequest:
         head: str | RelativeBranch | AbsoluteBranch,
         **kwargs: typing.Any,
     ) -> GitHubPullRequest:
-
         if isinstance(base, str):
             base = make_absolute_branch(base, repo)
         else:
@@ -858,7 +894,6 @@ class GitHubPullRequest:
         info: dict[str, typing.Any],
         **kwargs: typing.Any,
     ) -> GitHubPullRequest:
-
         return cls(
             base=make_absolute_branch(info['base']['label'], info['base']['repo']['name']),
             head=make_absolute_branch(info['head']['label'], info['head']['repo']['name']),
@@ -875,7 +910,6 @@ class GitHubPullRequest:
         number: typing.Any,
         **kwargs: typing.Any,
     ) -> GitHubPullRequest:
-
         pull_number: str = cls._validate_number(number)
         gh = GitHubAPICaller(**kwargs)
 
@@ -940,11 +974,13 @@ class GitHubPullRequest:
         if self._info_last_updated > int(time.time()) - 5:
             return
 
-        self._info.update(self.api.get_pull_request(
-            self.base.owner,
-            self.base.repo,
-            number,
-        ))
+        self._info.update(
+            self.api.get_pull_request(
+                self.base.owner,
+                self.base.repo,
+                number,
+            )
+        )
         self._update_attributes()
 
     def is_created(self, /) -> bool:
@@ -982,17 +1018,19 @@ class GitHubPullRequest:
             print(f'pull request #{self.number} has already been created', file=sys.stderr)
             return
 
-        self._info.update(self.api.create_pull_request(
-            self.base.owner,
-            self.base.repo,
-            f'{self.head.owner}:{self.head.branch}',
-            self.base.branch,
-            head_repo=self.head.repo,
-            title=self.update_title(title) if title else self.title,
-            body=self.update_body(body) if body else self.body,
-            maintainer_can_modify=maintainer_can_modify,
-            draft=draft,
-        ))
+        self._info.update(
+            self.api.create_pull_request(
+                self.base.owner,
+                self.base.repo,
+                f'{self.head.owner}:{self.head.branch}',
+                self.base.branch,
+                head_repo=self.head.repo,
+                title=self.update_title(title) if title else self.title,
+                body=self.update_body(body) if body else self.body,
+                maintainer_can_modify=maintainer_can_modify,
+                draft=draft,
+            )
+        )
         self._title_unsaved_changes = False
         self._body_unsaved_changes = False
         self._update_attributes()
@@ -1011,16 +1049,18 @@ class GitHubPullRequest:
             print('unable to update pull request as it has not yet been created', file=sys.stderr)
             return
 
-        self._info.update(self.api.update_pull_request(
-            self.base.owner,
-            self.base.repo,
-            self.number,
-            title=self.update_title(title) if title else self.title,
-            body=self.update_body(body) if body else self.body,
-            state=state,
-            base=base,
-            maintainer_can_modify=maintainer_can_modify,
-        ))
+        self._info.update(
+            self.api.update_pull_request(
+                self.base.owner,
+                self.base.repo,
+                self.number,
+                title=self.update_title(title) if title else self.title,
+                body=self.update_body(body) if body else self.body,
+                state=state,
+                base=base,
+                maintainer_can_modify=maintainer_can_modify,
+            )
+        )
         self._title_unsaved_changes = False
         self._body_unsaved_changes = False
         self._update_attributes()
@@ -1100,7 +1140,10 @@ class GitHubPullRequest:
             return False
 
         if self.api.update_pull_request_branch(
-            self.head.owner, self.head.repo, self.number, expected_head_sha=expected_head_sha,
+            self.head.owner,
+            self.head.repo,
+            self.number,
+            expected_head_sha=expected_head_sha,
         ):
             return True
 
@@ -1140,8 +1183,7 @@ class GitHubPullRequest:
         return self.update_body(separator.join(filter(None, [self._body, text])))
 
     def load_body_from_patch_file(self, /, path: pathlib.Path) -> str | None:
-        return self.update_body(
-            self._parse_subject_and_body_from_message(self._parse_message_from_patch_file(path))[1])
+        return self.update_body(self._parse_subject_and_body_from_message(self._parse_message_from_patch_file(path))[1])
 
     @property
     def commit_message(self, /) -> str | None:
@@ -1170,7 +1212,6 @@ class GitHubPullRequest:
         /,
         path: pathlib.Path,
     ) -> collections.abc.Iterator[str]:
-
         SUBJECT_PREFIX = 'Subject: '
         TERMINATE_LINE = '---\n'
 
@@ -1193,7 +1234,6 @@ class GitHubPullRequest:
         /,
         commit_message: str | None,
     ) -> tuple[str | None, str | None]:
-
         if commit_message is None:
             return None, None
 

@@ -71,8 +71,7 @@ def release_is_too_hot(release: dict[str, typing.Any], cooldown: dt.datetime | N
 
 
 def get_pin_and_comment(uses_pin: str, workflow_text: str) -> tuple[str, str]:
-    mobj = re.search(
-        rf'\buses:\s+{re.escape(uses_pin)}\s+#\s*(?P<tag>v?[0-9]+(?:\.[0-9]+)*)', workflow_text)
+    mobj = re.search(rf'\buses:\s+{re.escape(uses_pin)}\s+#\s*(?P<tag>v?[0-9]+(?:\.[0-9]+)*)', workflow_text)
     if not mobj:
         raise WorkflowError(f'Unable to find tag comment for "{uses_pin}" in workflow')
 
@@ -88,7 +87,8 @@ def update_pins_in_workflow_text(
     replaced_text = re.sub(
         rf'\buses:\s+{re.escape(full_action_name)}@[0-9a-fA-F]{{40}}(?:\s+#.+)?',
         f'uses: {full_action_name}@{latest_pin.sha}  # {latest_pin.tag}',
-        workflow_text)
+        workflow_text,
+    )
 
     if replaced_text == workflow_text:
         raise WorkflowError(f'Failed to replace action pin in: {workflow_path}')
@@ -100,13 +100,15 @@ def make_pull_request_description(
     workflows: dict[pathlib.Path, dict[str, ActionPin]],
     all_updates: dict[Action, tuple[ActionPin, ActionPin]],
 ) -> str:
-    return '\n'.join((
-        '<!-- BEGIN dlp-bot generated section -->\n',
-        *generate_actions_report(all_updates),
-        '',
-        *generate_workflows_report(workflows),
-        '\n<!-- END dlp-bot generated section -->\n\n',
-    ))
+    return '\n'.join(
+        (
+            '<!-- BEGIN dlp-bot generated section -->\n',
+            *generate_actions_report(all_updates),
+            '',
+            *generate_workflows_report(workflows),
+            '\n<!-- END dlp-bot generated section -->\n\n',
+        )
+    )
 
 
 def make_bulk_commit_message(
@@ -116,11 +118,13 @@ def make_bulk_commit_message(
     prefix: str | None = None,
     addendum: str | None = None,
 ) -> str:
-    return '\n\n'.join((
-        make_bulk_commit_title(workflows, all_updates, prefix=prefix),
-        make_bulk_commit_body(all_updates),
-        f'{addendum or ""}\n',
-    ))
+    return '\n\n'.join(
+        (
+            make_bulk_commit_title(workflows, all_updates, prefix=prefix),
+            make_bulk_commit_body(all_updates),
+            f'{addendum or ""}\n',
+        )
+    )
 
 
 def make_bulk_commit_title(
@@ -131,11 +135,14 @@ def make_bulk_commit_title(
 ) -> str:
     workflows_count = len(list(filter(None, workflows.values())))
     actions_count = len(all_updates)
-    return ''.join((
-        prefix or '',
-        f'Update {actions_count} action',
-        's' if actions_count > 1 else '',
-        f' in {workflows_count} workflows'))
+    return ''.join(
+        (
+            prefix or '',
+            f'Update {actions_count} action',
+            's' if actions_count > 1 else '',
+            f' in {workflows_count} workflows',
+        )
+    )
 
 
 def make_bulk_commit_body(all_updates: dict[Action, tuple[ActionPin, ActionPin]]) -> str:
@@ -150,10 +157,12 @@ def make_incremental_commit_message(
     prefix: str | None = None,
     addendum: str | None = None,
 ) -> str:
-    return '\n\n'.join((
-        make_commit_line(action, old, new, prefix=prefix or ''),
-        f'{addendum or ""}\n',
-    ))
+    return '\n\n'.join(
+        (
+            make_commit_line(action, old, new, prefix=prefix or ''),
+            f'{addendum or ""}\n',
+        )
+    )
 
 
 def make_commit_line(action: Action, old: ActionPin, new: ActionPin, *, prefix: str = '* ') -> str:
@@ -163,7 +172,6 @@ def make_commit_line(action: Action, old: ActionPin, new: ActionPin, *, prefix: 
 def generate_workflows_report(
     workflows: dict[pathlib.Path, dict[str, ActionPin]],
 ) -> collections.abc.Iterator[str]:
-
     slice_val = (len(WORKFLOWS_DIRECTORY.split('/')) + 1) * -1
 
     yield 'workflow | updates'
@@ -201,12 +209,14 @@ def generate_actions_report(
         md_new = ('v' if new.tag.startswith('v') else '') + md_new.lstrip('.')
         github_url = f'https://github.com/{action.owner}/{action.repo}'
 
-        yield ' | '.join((
-            f'[**`{action.owner}/{action.repo}`**](<{github_url}>)',
-            f'[{md_old}](<{github_url}/releases/tag/{old.tag}>)',
-            f'[{md_new}](<{github_url}/releases/tag/{new.tag}>)',
-            f'[`{old.sha[:7]}...{new.sha[:7]}`](<{github_url}/compare/{old.sha}...{new.sha}>)',
-        ))
+        yield ' | '.join(
+            (
+                f'[**`{action.owner}/{action.repo}`**](<{github_url}>)',
+                f'[{md_old}](<{github_url}/releases/tag/{old.tag}>)',
+                f'[{md_new}](<{github_url}/releases/tag/{new.tag}>)',
+                f'[`{old.sha[:7]}...{new.sha[:7]}`](<{github_url}/compare/{old.sha}...{new.sha}>)',
+            )
+        )
 
 
 class ActionsUpdater:
@@ -221,7 +231,6 @@ class ActionsUpdater:
         *,
         exclude_newer: dt.datetime | None = None,
     ):
-
         self.git = git
         self.api = api
         self.web = web
@@ -242,7 +251,6 @@ class ActionsUpdater:
         pr: GitHubPullRequest,
         **kwargs,
     ) -> ActionsUpdater:
-
         return cls(
             git=git,
             api=pr.api,
@@ -264,7 +272,6 @@ class ActionsUpdater:
         verbose: bool = False,
         **kwargs,
     ) -> ActionsUpdater:
-
         return cls(
             git=Git(str(local_path), verbose=verbose),
             api=GitHubAPICaller(github_token=github_token, verbose=verbose),
@@ -294,7 +301,6 @@ class ActionsUpdater:
         /,
         workflow_path: pathlib.Path,
     ) -> list[tuple[str, str]]:
-
         if yaml is None:
             raise ImportError('the pyyaml package (yaml library) is required')
 
@@ -340,7 +346,6 @@ class ActionsUpdater:
         repo: str,
         release: dict[str, typing.Any],
     ) -> tuple[str, str]:
-
         tag: str = release['tag_name']
         sha: str = release['target_commitish']
 
@@ -372,8 +377,9 @@ class ActionsUpdater:
         latest_release = None
 
         if action.action_slug:
-            latest_tag = self.web.fetch_actions_marketplace(
-                action.action_slug)['payload']['releaseData']['latestRelease']['tagName']
+            latest_tag = self.web.fetch_actions_marketplace(action.action_slug)['payload']['releaseData'][
+                'latestRelease'
+            ]['tagName']
 
         # Only the first page of releases should be sufficient
         releases = self.api.list_releases(action.owner, action.repo)
@@ -385,7 +391,9 @@ class ActionsUpdater:
                 if release_is_too_hot(release, self._exclude_newer):
                     print(
                         f'The latest release for {action.owner}/{action.repo} is being skipped '
-                        f'per cooldown policy: {latest_tag}', file=sys.stderr)
+                        f'per cooldown policy: {latest_tag}',
+                        file=sys.stderr,
+                    )
                     latest_tag = None
                     continue
                 latest_release = release
@@ -397,13 +405,14 @@ class ActionsUpdater:
                 if release_is_too_hot(release, self._exclude_newer):
                     print(
                         f'Release "{release["tag_name"]}" for {action.owner}/{action.repo} '
-                        'is being skipped per cooldown policy', file=sys.stderr)
+                        'is being skipped per cooldown policy',
+                        file=sys.stderr,
+                    )
                     continue
                 latest_release = release
                 break
         else:
-            raise ActionError(
-                f'Unable to get latest eligible release for action: {action.owner}/{action.repo}')
+            raise ActionError(f'Unable to get latest eligible release for action: {action.owner}/{action.repo}')
 
         latest_tag, latest_sha = self.get_tag_and_sha_from_release(action.owner, action.repo, latest_release)
 
@@ -422,7 +431,6 @@ class ActionsUpdater:
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
     ) -> tuple[dict[pathlib.Path, dict[str, ActionPin]], dict[Action, tuple[ActionPin, ActionPin]]]:
-
         if commit_type not in ('bulk', 'incremental'):
             raise ValueError(f'invalid commit_type value: {commit_type}')
 
@@ -432,8 +440,7 @@ class ActionsUpdater:
         gha_path = base_path / WORKFLOWS_DIRECTORY
 
         workflows: dict[pathlib.Path, dict[str, ActionPin]] = {
-            workflow_path: {}
-            for workflow_path in itertools.chain(gha_path.glob('*.yml'), gha_path.glob('*.yaml'))
+            workflow_path: {} for workflow_path in itertools.chain(gha_path.glob('*.yml'), gha_path.glob('*.yaml'))
         }
 
         all_updates = {}
@@ -477,21 +484,20 @@ class ActionsUpdater:
 
         if commit_type == 'incremental':
             for action, (old, new) in all_updates.items():
-
                 for workflow_path, current_workflow_updates in workflows.items():
                     workflow_text = workflow_path.read_text()
                     for full_action_name, latest_pin in current_workflow_updates.items():
                         if (action.owner, action.repo) == parse_owner_and_repo(full_action_name):
                             workflow_text = update_pins_in_workflow_text(
-                                full_action_name, latest_pin, workflow_text, workflow_path)
+                                full_action_name, latest_pin, workflow_text, workflow_path
+                            )
 
                     workflow_path.write_text(workflow_text)
                     updated_paths.add(workflow_path)
 
                 commit_msg = make_incremental_commit_message(
-                    action, old, new,
-                    prefix=commit_prefix,
-                    addendum=commit_addendum)
+                    action, old, new, prefix=commit_prefix, addendum=commit_addendum
+                )
                 self.git.bot_commit(commit_msg, updated_paths)
                 updated_paths.clear()
 
@@ -500,15 +506,15 @@ class ActionsUpdater:
                 workflow_text = workflow_path.read_text()
                 for full_action_name, latest_pin in current_workflow_updates.items():
                     workflow_text = update_pins_in_workflow_text(
-                        full_action_name, latest_pin, workflow_text, workflow_path)
+                        full_action_name, latest_pin, workflow_text, workflow_path
+                    )
 
                 workflow_path.write_text(workflow_text)
                 updated_paths.add(workflow_path)
 
             commit_msg = make_bulk_commit_message(
-                workflows, all_updates,
-                prefix=commit_prefix,
-                addendum=commit_addendum)
+                workflows, all_updates, prefix=commit_prefix, addendum=commit_addendum
+            )
             self.git.bot_commit(commit_msg, updated_paths)
 
         if export_patches:

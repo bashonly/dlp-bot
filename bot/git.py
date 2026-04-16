@@ -30,7 +30,6 @@ class Git:
         upstream_name: str | None = None,
         verbose: bool = False,
     ):
-
         if not exe_location:
             exe_location = shutil.which('git')
             if not exe_location:
@@ -241,7 +240,6 @@ class Git:
         *,
         push: bool = False,
     ) -> None:
-
         remote_url = self.bot_make_remote_url(forge, owner, repo)
         if not self.bot_check_if_remote_exists(remote_name):
             self.remote('add', '--', remote_name, remote_url)
@@ -252,8 +250,8 @@ class Git:
             return
 
         raise GitError(
-            f'"{remote_name}" ({"push" if push else "fetch"}): '
-            f'expected {remote_url!r}, got {actual_remote_url!r}')
+            f'"{remote_name}" ({"push" if push else "fetch"}): expected {remote_url!r}, got {actual_remote_url!r}'
+        )
 
     def bot_clone_upstream_here(self, /, forge: str, owner: str, repo: str) -> None:
         if not self._upstream_name:
@@ -295,13 +293,14 @@ class Git:
         since_or_range: str,
         output_dir: str | pathlib.Path | None = None,
     ) -> list[str]:
-
         git_args = ['--keep-subject']
         if output_dir:
-            git_args.extend([
-                '--output-directory',
-                str(pathlib.Path(output_dir).resolve()),
-            ])
+            git_args.extend(
+                [
+                    '--output-directory',
+                    str(pathlib.Path(output_dir).resolve()),
+                ]
+            )
 
         return self.format_patch(*git_args, since_or_range)
 

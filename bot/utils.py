@@ -77,9 +77,7 @@ def parse_datetime_from_cooldown(cooldown: str) -> dt.datetime:
         (?:(?P<seconds>\d+)\s*seconds?)?
         """)
 
-    mobj = (
-        ISO8601_DURATION_RE.fullmatch(cooldown)
-        or NATURAL_LANGUAGE_RE.fullmatch(cooldown))
+    mobj = ISO8601_DURATION_RE.fullmatch(cooldown) or NATURAL_LANGUAGE_RE.fullmatch(cooldown)
     if not mobj:
         raise ValueError(f'Unable to parse duration: {cooldown}')
 

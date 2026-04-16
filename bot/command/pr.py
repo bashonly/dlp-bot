@@ -33,7 +33,8 @@ def configure_parser(parser: argparse.ArgumentParser):
         help=f'name of the (upstream) repository. one of: {", ".join(SERVICED_REPOS)}',
     )
     parser.add_argument(
-        '-H', '--head',
+        '-H',
+        '--head',
         dest='head_label',
         metavar='OWNER[:REPO]:BRANCH',
         required=True,
@@ -43,7 +44,8 @@ def configure_parser(parser: argparse.ArgumentParser):
         ),
     )
     parser.add_argument(
-        '-B', '--base',
+        '-B',
+        '--base',
         dest='base_label',
         metavar='OWNER[:REPO]:BRANCH',
         help=(

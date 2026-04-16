@@ -33,7 +33,6 @@ deps = [
 
 [dependency-groups]
 static-analysis = [
-    "autopep8~=2.0",
     "ruff~=0.15.0",
 ]
 
@@ -83,6 +82,7 @@ ignore = [
     "A005",    # stdlib-module-shadowing
     "C401",    # unnecessary-generator-set
     "C402",    # unnecessary-generator-dict
+    "COM812",  # missing-trailing-comma
     "PIE790",  # unnecessary-placeholder
     "SIM102",  # collapsible-if
     "SIM108",  # if-else-block-instead-of-if-exp
