@@ -47,12 +47,12 @@ def _main():
     _add_parser(bot.command.pr)
 
     args = parser.parse_args()
-    parsers[args.action](args)
+    return parsers[args.action](args)
 
 
 def main():
     try:
-        _main()
+        sys.exit(_main())
     except KeyboardInterrupt:
         print('\nERROR: interrupted by user', file=sys.stderr)
         sys.exit(1)
