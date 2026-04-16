@@ -244,10 +244,11 @@ def _real_run(args: argparse.Namespace):
         upstream_name=args.base_remote,
         verbose=args.verbose,
     )
-    # origin
-    git.bot_add_or_verify_remote(args.base_remote, GIT_FORGE, pr.base.owner, pr.base.repo)
     # upstream
-    git.bot_add_or_verify_remote(args.head_remote, GIT_FORGE, pr.head.owner, pr.head.repo)
+    git.bot_add_or_verify_remote(args.base_remote, GIT_FORGE, pr.base.owner, pr.base.repo)
+    if args.pr:
+        # we only interact with the origin remote if a pull request is being created
+        git.bot_add_or_verify_remote(args.head_remote, GIT_FORGE, pr.head.owner, pr.head.repo)
 
     if args.clone:
         git.bot_clone_upstream_here(GIT_FORGE, pr.base.owner, pr.base.repo)
