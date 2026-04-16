@@ -57,7 +57,7 @@ def parse_datetime_from_cooldown(cooldown: str) -> dt.datetime:
 
     if UNIX_TIMESTAMP_RE.fullmatch(cooldown):
         with contextlib.suppress(OSError, OverflowError, ValueError):
-            return dt.datetime.fromtimestamp(float(cooldown), tz=dt.timezone.utc)
+            return dt.datetime.fromtimestamp(float(cooldown), tz=dt.UTC)
 
     with contextlib.suppress(OSError, OverflowError, ValueError):
         return dt.datetime.fromisoformat(cooldown)
@@ -88,7 +88,7 @@ def parse_datetime_from_cooldown(cooldown: str) -> dt.datetime:
         days = parts.pop('days', 0)
         parts['days'] = (weeks * 7) + days
 
-    return dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(**parts)
+    return dt.datetime.now(tz=dt.UTC) - dt.timedelta(**parts)
 
 
 def table_a_raza(header: tuple[str, ...], rows: list[tuple[str, ...]]) -> collections.abc.Generator[str]:
