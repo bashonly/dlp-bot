@@ -202,7 +202,10 @@ class Git:
         self.checkout('-B', target_branch, start_point)
 
     def bot_config_re_search(self, /, pattern: str) -> list[str]:
-        return self.config('--null', '--get-regexp', pattern)
+        try:
+            return self.config('--null', '--get-regexp', pattern)
+        except GitError:
+            return []
 
     def bot_get_remote_by_url(self, /, remote_url: str) -> str | None:
         for remote in self.bot_config_re_search(r'remote\.[^.]+\.url'):
@@ -228,9 +231,10 @@ class Git:
 
     def bot_get_remote_url(self, /, remote_name: str, *, push: bool = False) -> str:
         git_args = ['get-url', '--push' if push else '--no-push', '--', remote_name]
-        if result := self.remote(*git_args):
-            return result[0]
-        raise GitError(f'git command failed to return a value: git remote {shlex.join(git_args)}')
+        try:
+            return self.remote(*git_args)[0]
+        except (GitError, IndexError):
+            raise GitError(f'unable to get remote URL for "{remote_name}"')
 
     def bot_add_or_verify_remote(
         self,
