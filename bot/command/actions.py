@@ -23,6 +23,7 @@ from bot.utils import (
     BotError,
     SuccessMessage,
     parse_datetime_from_cooldown,
+    safe_format,
     table_a_raza,
 )
 from bot.workflows import ActionsUpdater
@@ -259,11 +260,15 @@ def _real_run(args: argparse.Namespace):
         exclude_newer=args.exclude_newer,
     )
 
+    formatted_addendum = safe_format(
+        args.commit_addendum or repo_info['commit_addendum'],
+        author=pr.head.owner)
+
     workflows, all_updates = updater.update(
         commit_type=args.commit_type or ('incremental' if args.pr else 'bulk'),
         export_patches=args.export_patches,
         commit_prefix=args.commit_prefix or repo_info['commit_prefix'],
-        commit_addendum=args.commit_addendum or repo_info['commit_addendum'],
+        commit_addendum=formatted_addendum,
     )
 
     if not all_updates:
@@ -273,7 +278,7 @@ def _real_run(args: argparse.Namespace):
         workflows,
         all_updates,
         commit_prefix=args.commit_prefix or repo_info['commit_prefix'],
-        commit_addendum=args.commit_addendum or repo_info['commit_addendum'],
+        commit_addendum=formatted_addendum,
     )
     pr.update_body(pull_request_body)
     pr.update_commit_message(merge_commit_message)

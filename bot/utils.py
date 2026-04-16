@@ -105,6 +105,13 @@ def table_a_raza(header: tuple[str, ...], rows: list[tuple[str, ...]]) -> collec
         yield ' | '.join(col.ljust(width) for width, col in zip(widths, row, strict=True))
 
 
+def safe_format(addendum: str | None, **kwargs) -> str | None:
+    if not addendum or not isinstance(addendum, str):
+        return None
+
+    return addendum.format(**kwargs)
+
+
 # TODO: remove? not used anymore
 def safely(
     obj: typing.Any,
