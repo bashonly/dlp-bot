@@ -9,6 +9,8 @@ permissions: {}
 jobs:
   build_matrix:
     name: Build matrix
+    # Must be either a workflow_dispatch event payload OR a scheduled run on yt-dlp/dlp-bot
+    if: github.event.workflow == '.github/workflows/update-actions.yml' || github.repository == 'yt-dlp/dlp-bot'
     runs-on: ubuntu-latest
     outputs:
       head_owner: ${{ steps.matrix.outputs.head_owner }}
