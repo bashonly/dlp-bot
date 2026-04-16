@@ -1,4 +1,4 @@
-name: Update actions
+name: Update action
 on:
   schedule:
     - cron: '17 17 * * *'
