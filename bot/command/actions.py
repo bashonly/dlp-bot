@@ -234,16 +234,17 @@ def _real_run(args: argparse.Namespace):
         upstream_name=args.base_remote,
         verbose=args.verbose,
     )
-    # upstream
-    git.bot_add_or_verify_remote(args.base_remote, GIT_FORGE, pr.base.owner, pr.base.repo)
-    if args.pr:
-        # we only interact with the origin remote if a pull request is being created
-        git.bot_add_or_verify_remote(args.head_remote, GIT_FORGE, pr.head.owner, pr.head.repo)
 
     if args.clone:
         git.bot_clone_upstream_here(GIT_FORGE, pr.base.owner, pr.base.repo)
     elif not git.bot_working_tree_is_clean():
         raise GitError('manual intervention needed; git working tree is unclean')
+
+    # upstream
+    git.bot_add_or_verify_remote(args.base_remote, GIT_FORGE, pr.base.owner, pr.base.repo)
+    if args.pr:
+        # we only interact with the origin remote if a pull request is being created
+        git.bot_add_or_verify_remote(args.head_remote, GIT_FORGE, pr.head.owner, pr.head.repo)
 
     git.bot_fetch_upstream()
     git.bot_overwrite_branch(pr.head.branch, f'{args.base_remote}/{pr.base.branch}')
