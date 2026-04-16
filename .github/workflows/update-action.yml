@@ -39,9 +39,16 @@ jobs:
         include: ${{ fromJSON(needs.build_matrix.outputs.matrix) }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Checkout bot repo (dlp-bot)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           path: dlp-bot
+          persist-credentials: false
+
+      - name: Checkout work repo (${{ matrix.repo }})
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          path: ${{ matrix.repo }}
           fetch-depth: 0
           persist-credentials: true  # Needed to git-push
           # Need ONE of the following:
@@ -85,7 +92,6 @@ jobs:
           cd dlp-bot
           python -m bot actions \
             --pr \
-            --clone \
             --verbose \
             -- \
             "${WORKING_REPO}" ../"${WORKING_REPO}"
