@@ -15,8 +15,6 @@ jobs:
     if: github.event.workflow == '.github/workflows/update-workflows.yml' || github.repository == 'yt-dlp/dlp-bot'
     runs-on: ubuntu-latest
     outputs:
-      head_owner: ${{ steps.matrix.outputs.head_owner }}
-      head_branch: ${{ steps.matrix.outputs.head_branch }}
       matrix: ${{ steps.matrix.outputs.matrix }}
 
     steps:
@@ -24,24 +22,13 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.14"
+
       - name: Build matrix
         id: matrix
-        shell: python
-        run: |
-          import json
-          import os
-          from bot.commands import DEFAULT_HEAD_LABEL
-          from bot.knowledge import SERVICED_REPOS
-          head_owner, _, head_branch = DEFAULT_HEAD_LABEL.partition(':')
-          matrix = [v for v in SERVICED_REPOS.values() if 'actions' in v['services']]
-          for repo in matrix:
-              repo['head_label'] = DEFAULT_HEAD_LABEL
-              repo['full_repo_path'] = '/'.join((repo['owner'], repo['repo']))
-          print(json.dumps(matrix, indent=2))
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-              f.write(f'head_owner={head_owner}\n')
-              f.write(f'head_branch={head_branch}\n')
-              f.write(f'matrix={json.dumps(matrix)}')
+        run: python .github/scripts/build_matrix.py
 
   update_actions:
     name: Update actions (${{ matrix.repo }})
