@@ -15,6 +15,7 @@ from bot.knowledge import SERVICED_REPOS
 
 matrix = [v for v in SERVICED_REPOS.values() if 'actions' in v['services']]
 
+# For testing
 for m in matrix:
     if m['repo'] == 'protobug':
         m['test'] = True

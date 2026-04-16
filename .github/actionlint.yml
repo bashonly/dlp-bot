@@ -1,4 +1,5 @@
 config-variables:
+  - HEAD_OWNER
   - GIT_USER_NAME
   - GIT_USER_EMAIL
   - DLPBOT_ACTIONS_COOLDOWN
