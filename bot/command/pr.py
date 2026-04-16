@@ -130,7 +130,7 @@ def _real_run(args: argparse.Namespace):
         pr.append_to_body(template)
 
     if pr.is_created():
-        print(f'PR #{pr.info["number"]} already exists, updating its info', file=sys.stderr)
+        print(f'PR #{pr.number} already exists, updating its info', file=sys.stderr)
         pr.update()
     else:
         pr.create()
