@@ -1025,6 +1025,30 @@ class GitHubPullRequest:
         self._body_unsaved_changes = False
         self._update_attributes()
 
+    def create_or_update(
+        self,
+        /,
+        *,
+        title: str | None = None,
+        body: str | None = None,
+        maintainer_can_modify: bool | None = None,
+        draft: bool | None = None,
+    ) -> None:
+        if self.is_created():
+            print(f'PR #{self.number} already exists, updating its info', file=sys.stderr)
+            self.update(
+                title=title,
+                body=body,
+                maintainer_can_modify=maintainer_can_modify,
+            )
+        else:
+            self.create(
+                title=title,
+                body=body,
+                maintainer_can_modify=maintainer_can_modify,
+                draft=draft,
+            )
+
     def close(self, /) -> None:
         if not self.is_open():
             print('unable to reopen pull request as it has already been merged', file=sys.stderr)

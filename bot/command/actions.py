@@ -290,11 +290,7 @@ def _real_run(args: argparse.Namespace):
         git.bot_fetch_origin()
         git.bot_force_push_with_lease_to_origin(pr.head.branch)
 
-        if pr.is_created():
-            print(f'PR #{pr.number} already exists, updating its info', file=sys.stderr)
-            pr.update()
-        else:
-            pr.create()
+        pr.create_or_update()
 
         raise SuccessMessage(pr.info['url'])
 
