@@ -265,7 +265,7 @@ def _real_run(args: argparse.Namespace):
 
     formatted_addendum = safe_format(
         args.commit_addendum or repo_info['commit_addendum'],
-        author=pr.head.owner)
+        username=pr.head.owner)
 
     workflows, all_updates = updater.update(
         commit_type=args.commit_type or ('incremental' if args.pr else 'bulk'),
