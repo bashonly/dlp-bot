@@ -101,11 +101,11 @@ def make_pull_request_description(
     all_updates: dict[Action, tuple[ActionPin, ActionPin]],
 ) -> str:
     return '\n'.join((
-        '<!-- BEGIN update_workflows generated section -->\n',
+        '<!-- BEGIN dlp-bot generated section -->\n',
         *generate_actions_report(all_updates),
         '',
         *generate_workflows_report(workflows),
-        '\n<!-- END update_workflows generated section -->\n\n',
+        '\n<!-- END dlp-bot generated section -->\n\n',
     ))
 
 
