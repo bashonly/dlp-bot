@@ -297,8 +297,13 @@ def _real_run(args: argparse.Namespace):
         git.bot_fetch_origin()
         git.bot_force_push_with_lease_to_origin(pr.head.branch)
 
-        pull_request_url = pr.create()['url']
-        raise SuccessMessage(pull_request_url)
+        if pr.is_created():
+            print(f'PR #{pr.info["number"]} already exists, updating its info', file=sys.stderr)
+            pr.update()
+        else:
+            pr.create()
+
+        raise SuccessMessage(pr.info['url'])
 
     if args.export_pr:
         args.export_pr.mkdir(parents=True, exist_ok=True)

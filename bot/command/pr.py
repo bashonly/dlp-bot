@@ -129,8 +129,13 @@ def _real_run(args: argparse.Namespace):
             template = pathlib.Path(template.removeprefix(FILE_PREFIX)).read_text()
         pr.append_to_body(template)
 
-    pull_request_url = pr.create()['url']
-    raise SuccessMessage(pull_request_url)
+    if pr.is_created():
+        print(f'PR #{pr.info["number"]} already exists, updating its info', file=sys.stderr)
+        pr.update()
+    else:
+        pr.create()
+
+    raise SuccessMessage(pr.info['url'])
 
 
 def run(args: argparse.Namespace) -> int:
