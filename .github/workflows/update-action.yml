@@ -44,9 +44,7 @@ jobs:
           path: dlp-bot
           fetch-depth: 0
           persist-credentials: true  # Needed to git-push
-          # Need ONE of the following:
-          token: ${{ secrets.PUSH_TOKEN || '' }}
-          ssh-key: ${{ secrets.SSH_KEY || '' }}
+          ssh-key: ${{ secrets.SSH_KEY }}
 
       - name: Configure git user
         env:
