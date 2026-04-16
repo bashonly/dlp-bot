@@ -227,7 +227,7 @@ def _real_run(args: argparse.Namespace):
     repo_info = SERVICED_REPOS[args.repository]
     pr = GitHubPullRequest.from_branches(
         repo=args.repository,
-        base=args.base_level or ':'.join((repo_info['owner'], repo_info['default_branch'])),
+        base=args.base_label or ':'.join((repo_info['owner'], repo_info['default_branch'])),
         head=args.head_label,
         github_token=args.github_token,
         verbose=args.verbose,
