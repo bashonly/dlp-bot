@@ -18,6 +18,8 @@ keywords = [
     "updater",
     "workflows",
 ]
+license = "Unlicense"
+license-files = ["LICENSE"]
 dynamic = ["version"]
 dependencies = []
 
