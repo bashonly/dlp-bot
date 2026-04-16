@@ -1,0 +1,93 @@
+name: Update actions
+on:
+  schedule:
+    - cron: '17 17 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build_matrix:
+    name: Build matrix
+    runs-on: ubuntu-latest
+    outputs:
+      head_owner: ${{ steps.matrix.outputs.head_owner }}
+      head_branch: ${{ steps.matrix.outputs.head_branch }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Build matrix
+        id: matrix
+        shell: python
+        run: |
+          import json
+          import os
+          from bot.knowledge import SERVICED_REPOS
+          matrix = [v for v in SERVICED_REPOS.values() if 'actions' in v['services']]
+          print(json.dumps(matrix, indent=2))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'matrix={json.dumps(matrix)}')
+
+  update_actions:
+    name: Update actions (${{ matrix.repo }})
+    needs: [build_matrix]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.build_matrix.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          path: dlp-bot
+          fetch-depth: 0
+          persist-credentials: true  # Needed to git-push
+          # Need ONE of the following:
+          token: ${{ secrets.PUSH_TOKEN }}
+          ssh-key: ${{ secrets.SSH_KEY }}
+
+      - name: Configure git user
+        env:
+          GIT_USER_NAME: ${{ vars.GIT_USER_NAME || 'dlp-bot' }}
+          GIT_USER_EMAIL: ${{ vars.GIT_USER_EMAIL || 'bot@yt-dlp.org' }}
+        run: |
+          git config --global user.name "${GIT_USER_NAME}"
+          git config --global user.email "${GIT_USER_EMAIL}"
+
+      - name: Configure git with SSH signing key
+        if: ${{ vars.SSH_SIGNING_KEY_ID }}
+        env:
+          SSH_SIGNING_KEY_ID: ${{ vars.SSH_SIGNING_KEY_ID }}
+        run: |
+          git config --global user.signingkey "${SSH_SIGNING_KEY_ID}"
+          git config --global gpg.format ssh
+          git config --global commit.gpgsign true
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.14"
+
+      - name: Install Requirements
+        run: |
+          python -m pip install -U --require-hashes -r "dlp-bot/requirements/actions.txt"
+
+      - name: Run bot actions ${{ matrix.repo }}
+        env:
+          GH_TOKEN: ${{ secrets.PULL_REQUEST_TOKEN }}
+          DLPBOT_GIT_PROTOCOL: ${{ vars.DLPBOT_GIT_PROTOCOL || 'ssh' }}
+          DLPBOT_ACTIONS_COOLDOWN: ${{ vars.DLPBOT_ACTIONS_COOLDOWN || '7 days' }}
+          WORKING_REPO: ${{ matrix.repo }}
+        run: |
+          cd dlp-bot
+          python -m bot actions \
+            --pr \
+            --clone \
+            --verbose \
+            -- \
+            "${WORKING_REPO}" ../"${WORKING_REPO}"

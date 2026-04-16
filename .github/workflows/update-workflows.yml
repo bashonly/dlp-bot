@@ -1,0 +1,251 @@
+name: Update workflows
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  GIT_USER_NAME: ${{ vars.GIT_USER_NAME || 'dlp-bot' }}
+  GIT_USER_EMAIL: ${{ vars.GIT_USER_EMAIL || 'bot@yt-dlp.org' }}
+
+jobs:
+  build_matrix:
+    name: Build matrix
+    runs-on: ubuntu-latest
+    outputs:
+      head_owner: ${{ steps.matrix.outputs.head_owner }}
+      head_branch: ${{ steps.matrix.outputs.head_branch }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Build matrix
+        id: matrix
+        shell: python
+        run: |
+          import json
+          import os
+          from bot.commands import DEFAULT_HEAD_LABEL
+          from bot.knowledge import SERVICED_REPOS
+          head_owner, _, head_branch = DEFAULT_HEAD_LABEL.partition(':')
+          matrix = [v for v in SERVICED_REPOS.values() if 'actions' in v['services']]
+          for repo in matrix:
+              repo['head_label'] = DEFAULT_HEAD_LABEL
+              repo['full_repo_path'] = '/'.join((repo['owner'], repo['repo']))
+          print(json.dumps(matrix, indent=2))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'head_owner={head_owner}\n')
+              f.write(f'head_branch={head_branch}\n')
+              f.write(f'matrix={json.dumps(matrix)}')
+
+  update_actions:
+    name: Update actions (${{ matrix.repo }})
+    needs: [build_matrix]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.build_matrix.outputs.matrix) }}
+    env:
+      WORK_REPO: ${{ matrix.repo }}
+
+    steps:
+      - name: Checkout work repo (${{ matrix.full_repo_path }})
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          repository: ${{ matrix.full_repo_path }}
+          path: ${{ matrix.repo }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout bot repo (${{ github.repository }})
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          repository: ${{ github.repository }}
+          path: dlp-bot
+          persist-credentials: false
+
+      - name: Configure git user
+        run: |
+          git config --global user.name "${GIT_USER_NAME}"
+          git config --global user.email "${GIT_USER_EMAIL}"
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.14"
+
+      - name: Install Requirements
+        run: |
+          python -m pip install -U --require-hashes -r "dlp-bot/requirements/actions.txt"
+
+      - name: Run bot actions ${{ matrix.repo }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DLPBOT_GIT_PROTOCOL: ${{ vars.DLPBOT_GIT_PROTOCOL || 'ssh' }}
+          DLPBOT_ACTIONS_COOLDOWN: ${{ vars.DLPBOT_ACTIONS_COOLDOWN || '7 days' }}
+        run: |
+          cd dlp-bot
+          python -m bot actions \
+            --verbose \
+            --commit-type incremental \
+            --export-patches ../patches \
+            --export-pr ../artifacts/pr \
+            -- \
+            "${WORK_REPO}" ../"${WORK_REPO}"
+
+      - name: Upload patches
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: patches-${{ matrix.repo }}
+          path: |
+            patches/*.patch
+          compression-level: 0
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: artifacts-${{ matrix.repo }}
+          path: |
+            artifacts/pr.bot.md
+            artifacts/pr.bot.txt
+          compression-level: 0
+
+  push:
+    name: Push to fork (${{ matrix.repo }})
+    needs: [build_matrix, update_actions]
+    permissions:
+      contents: read  # Push via SSH; HTTPS write token is not needed
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.build_matrix.outputs.matrix) }}
+    env:
+      WORK_REPO: ${{ matrix.repo }}
+      HEAD_REPO: ${{ format('{0}/{1}', matrix.head_owner, matrix.repo) }}
+
+    steps:
+      - name: Checkout work repo (${{ env.HEAD_REPO }})
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          repository: ${{ env.HEAD_REPO }}
+          path: ${{ matrix.repo }}
+          fetch-depth: 0
+          persist-credentials: true  # Needed to git-push
+          # Need ONE of the following:
+          token: ${{ secrets.PUSH_TOKEN }}
+          ssh-key: ${{ secrets.SSH_KEY }}
+
+      - name: Configure git user
+        run: |
+          git config --global user.name "${GIT_USER_NAME}"
+          git config --global user.email "${GIT_USER_EMAIL}"
+
+      # Use secrets.SSH_KEY to sign to commits if vars.SSH_SIGNING_KEY_ID is set
+      - name: Configure git with SSH signing key
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_SIGNING_KEY_ID: ${{ vars.SSH_SIGNING_KEY_ID }}
+        if: vars.SSH_SIGNING_KEY_ID && env.SSH_KEY && !vars.GPG_SIGNING_KEY_ID
+        run: |
+          git config --global user.signingkey "${SSH_SIGNING_KEY_ID}"
+          git config --global gpg.format ssh
+          git config --global commit.gpgsign true
+
+      # Use secrets.GPG_KEY to sign commits if vars.GPG_SIGNING_KEY_ID is set
+      - name: Configure git with GPG signing key
+        env:
+          GPG_KEY: ${{ secrets.GPG_KEY }}
+          GPG_SIGNING_KEY_ID: ${{ vars.GPG_SIGNING_KEY_ID }}  # last 16 chars of id in --list-keys
+        if: vars.GPG_SIGNING_KEY_ID && env.GPG_KEY && !vars.SSH_SIGNING_KEY_ID
+        run: |
+          gpg --batch --import <<< "${GPG_KEY}"
+          git config --global user.signingkey "${GPG_SIGNING_KEY_ID}"
+          git config --global commit.gpgsign true
+
+      - name: Create PR branch
+        env:
+          UPSTREAM: ${{ matrix.full_repo_path }}
+          HEAD_BRANCH: ${{ matrix.head_branch }}
+          DEFAULT_BRANCH: ${{ matrix.default_branch }}
+        run: |
+          cd "${WORK_REPO}"
+          git remote add upstream "git@github.com:${UPSTREAM}.git"
+          git fetch --no-tags upstream
+          git checkout -b "${HEAD_BRANCH}" "upstream/${DEFAULT_BRANCH}"
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          path: patches
+          pattern: patches-${{ matrix.repo }}
+
+      - name: Commit patches
+        run: |
+          cd "${WORK_REPO}"
+          for patch in ../patches/*.patch; do
+            git apply "${patch}"
+            git commit --all --file "${patch}"
+          done
+
+      - name: Push to remote
+        env:
+          HEAD_BRANCH: ${{ matrix.head_branch }}
+        run: |
+          cd "${WORK_REPO}"
+          git push --force origin "${HEAD_BRANCH}"
+
+  create_pr:
+    name: Create pull request (${{ matrix.repo }})
+    needs: [build_matrix, push]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.build_matrix.outputs.matrix) }}
+    env:
+      WORK_REPO: ${{ matrix.repo }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.14"
+
+      - name: Install Requirements
+        run: |
+          python -m pip install -U --require-hashes -r "requirements/update-actions.txt"
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          path: artifacts
+          pattern: artifacts-${{ matrix.repo }}
+
+      - name: Write pull request template
+        shell: python
+        run: |
+          import os
+          import pathlib
+          from bot.knowledge import PULL_REQUEST_TEMPLATES
+          template = PULL_REQUEST_TEMPLATES.get(os.environ['WORK_REPO'])
+          if template:
+              with pathlib.Path('artifacts/pr.bot.md').open('a') as f:
+                  f.write(f'\n\n{template}')
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.PULL_REQUEST_TOKEN }}
+          HEAD_LABEL: ${{ matrix.head_label }}
+        run: |
+          python -m bot pr create \
+            --title-file artifacts/pr.bot.txt \
+            --body-file artifacts/pr.bot.md \
+            --head "${HEAD_LABEL}" \
+            -- \
+            "${WORK_REPO}"
