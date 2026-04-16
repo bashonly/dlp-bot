@@ -39,13 +39,6 @@ GIT_FORGE = 'github'
 DEFAULT_HEAD_LABEL = 'dlp-bot:bot/update-actions'
 
 
-# Example usage:
-# $ bot actions yt-dlp
-# $ bot actions --pr yt-dlp .
-# $ bot actions Pyinstaller-Builds /path/to/Pyinstaller-Builds
-# $ bot actions --clone --pr ejs
-# $ bot actions --pr --base yt-dlp:main --head dlp-bot:feature protobug .
-# $ bot actions --clone --pr -B yt-dlp:master -H dlp-bot:bot/update-actions /path/to/cloning/dir
 def configure_parser(parser: argparse.ArgumentParser):
     parser.add_argument(
         'repository',

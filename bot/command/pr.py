@@ -25,13 +25,6 @@ from bot.utils import (
 FILE_PREFIX = 'file:'
 
 
-# Example usage:
-# $ bot pr --head dlp-bot:feature yt-dlp
-# $ bot pr -H bashonly:fix yt-dlp
-# $ bot pr --head coletdjnz:yt-dlp-dev:feature yt-dlp
-# $ bot pr -Hdlp-bot:update protobug /path/to/protobug
-# $ bot pr -H bashonly:pr --title "Some title" --body "Description of changes" Pyinstaller-Builds
-# $ bot pr -HGrub4K:fix --title file:last-commit.patch --body file:/path/to/pr.md ejs ../ejs
 def configure_parser(parser: argparse.ArgumentParser):
     parser.add_argument(
         'repository',
