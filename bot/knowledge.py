@@ -220,7 +220,7 @@ ACTIONS: dict[str, dict[str, typing.Any]] = {
 }
 
 PULL_REQUEST_TEMPLATES: dict[str, str] = {
-    'yt-dlp': '''\
+    'yt-dlp': """\
 <details open><summary>Template</summary> <!-- OPEN is intentional -->
 
 
@@ -236,5 +236,5 @@ PULL_REQUEST_TEMPLATES: dict[str, str] = {
 - [x] Automated maintenance
 
 </details>
-''',
+""",
 }

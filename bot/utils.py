@@ -62,20 +62,20 @@ def parse_datetime_from_cooldown(cooldown: str) -> dt.datetime:
     with contextlib.suppress(OSError, OverflowError, ValueError):
         return dt.datetime.fromisoformat(cooldown)
 
-    ISO8601_DURATION_RE = re.compile(r'''(?x)
+    ISO8601_DURATION_RE = re.compile(r"""(?x)
         P(?:(?P<days>\d+\.\d+|\d*)D)?
         T?
           (?:(?P<hours>\d+\.\d+|\d*)H)?
           (?:(?P<minutes>\d+\.\d+|\d*)M)?
           (?:(?P<seconds>\d+\.\d+|\d*)S)?
-        ''')
-    NATURAL_LANGUAGE_RE = re.compile(r'''(?x)
+        """)
+    NATURAL_LANGUAGE_RE = re.compile(r"""(?x)
         (?:(?P<weeks>\d+)\s*weeks?(?:,\s+)?)?
         (?:(?P<days>\d+)\s*days?(?:,\s+)?)?
         (?:(?P<hours>\d+)\s*hours?(?:,\s+)?)?
         (?:(?P<minutes>\d+)\s*minutes?(?:,\s+)?)?
         (?:(?P<seconds>\d+)\s*seconds?)?
-        ''')
+        """)
 
     mobj = (
         ISO8601_DURATION_RE.fullmatch(cooldown)
