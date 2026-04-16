@@ -93,5 +93,6 @@ jobs:
           python -m bot actions \
             --pr \
             --verbose \
+            --head "${GITHUB_OWNER}:bot/update-actions" \
             -- \
             "${WORKING_REPO}" ../"${WORKING_REPO}"
