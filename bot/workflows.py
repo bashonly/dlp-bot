@@ -534,15 +534,21 @@ class ActionsUpdater:
     ) -> tuple[str, str]:
         """Returns a tuple of the pull request description and the merge commit message"""
 
-        return (
-            make_pull_request_description(
-                workflows,
-                all_updates,
-            ),
-            make_bulk_commit_message(
+        if len(all_updates) > 1:
+            commit_message = make_bulk_commit_message(
                 workflows,
                 all_updates,
                 prefix=commit_prefix,
                 addendum=commit_addendum,
-            ),
-        )
+            )
+        else:
+            action = next(iter(all_updates))
+            commit_message = make_incremental_commit_message(
+                action,
+                all_updates[action][0],
+                all_updates[action][1],
+                prefix=commit_prefix,
+                addendum=commit_addendum,
+            )
+
+        return make_pull_request_description(workflows, all_updates), commit_message
