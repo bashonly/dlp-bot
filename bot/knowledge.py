@@ -10,7 +10,7 @@ SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
         'default_branch': 'master',
         'commit_prefix': '[ci] ',
         'commit_addendum': 'Authored by: {username}',
-        'services': ['actions', 'deps', 'update'],
+        'services': ['actions'],
     },
     'ejs': {
         'forge': 'github',
@@ -19,7 +19,7 @@ SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
         'default_branch': 'main',
         'commit_prefix': None,
         'commit_addendum': None,
-        'services': ['actions', 'deps'],
+        'services': ['actions'],
     },
     'protobug': {
         'forge': 'github',
@@ -55,7 +55,7 @@ SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
         'default_branch': 'main',
         'commit_prefix': None,
         'commit_addendum': None,
-        'services': ['actions', 'deps'],
+        'services': [],  # actions
     },
 }
 
