@@ -7,13 +7,15 @@ on:
 permissions: {}
 
 jobs:
-  build_matrix:
-    name: Build matrix
+  output_variables:
+    name: Output variables
     # Must be either a workflow_dispatch event payload OR a scheduled run on yt-dlp/dlp-bot
     if: github.event.workflow == '.github/workflows/update-actions.yml' || github.repository == 'yt-dlp/dlp-bot'
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.matrix.outputs.matrix }}
+      default_head_branch: ${{ steps.variables.outputs.default_head_branch }}
+      default_head_owner: ${{ steps.variables.outputs.default_head_owner }}
+      matrix: ${{ steps.variables.outputs.matrix }}
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -24,39 +26,38 @@ jobs:
         with:
           python-version: "3.14"
 
-      - name: Build matrix
-        id: matrix
-        run: python .github/scripts/build_matrix.py
+      - name: Output variables
+        id: variables
+        run: python .github/scripts/output_variables.py
 
   update_actions:
     name: Update actions (${{ matrix.repo }})
-    needs: [build_matrix]
+    needs: [output_variables]
     permissions:
       contents: read
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include: ${{ fromJSON(needs.build_matrix.outputs.matrix) }}
+        include: ${{ fromJSON(needs.output_variables.outputs.matrix) }}
     env:
-      HEAD_OWNER: ${{ vars.HEAD_OWNER || 'dlp-bot' }}
+      HEAD_BRANCH: ${{ vars.ACTIONS_BRANCH || needs.output_variables.outputs.default_head_branch }}
+      HEAD_OWNER: ${{ vars.HEAD_OWNER || needs.output_variables.outputs.default_head_owner }}
 
     steps:
-      - name: Checkout bot repo (dlp-bot)
+      - name: Checkout bot repo (${{ github.repository }})
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           path: dlp-bot
           persist-credentials: false
 
-      - name: Checkout work repo (${{ matrix.repo }})
+      - name: Checkout working repo (${{ format('{0}/{1}', env.HEAD_OWNER, matrix.repo) }})
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: ${{ format('{0}/{1}', env.HEAD_OWNER, matrix.repo) }}
           path: ${{ matrix.repo }}
           fetch-depth: 0
           persist-credentials: true  # Needed to git-push
-          # Need ONE of the following:
-          token: ${{ secrets.PUSH_TOKEN || github.token }}
-          ssh-key: ${{ secrets.SSH_KEY }}
+          token: ${{ secrets.BOT_TOKEN }}
 
       - name: Configure git user
         env:
@@ -66,27 +67,17 @@ jobs:
           git config --global user.name "${GIT_USER_NAME}"
           git config --global user.email "${GIT_USER_EMAIL}"
 
-      - name: Configure git with SSH signing key
-        if: ${{ vars.SSH_SIGNING_KEY_ID }}
-        env:
-          SSH_SIGNING_KEY_ID: ${{ vars.SSH_SIGNING_KEY_ID }}
-        run: |
-          git config --global user.signingkey "${SSH_SIGNING_KEY_ID}"
-          git config --global gpg.format ssh
-          git config --global commit.gpgsign true
-
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: "3.14"
 
-      - name: Install Requirements
+      - name: Install requirements
         run: |
           python -m pip install -U --require-hashes -r "dlp-bot/requirements/actions.txt"
 
       - name: Run bot actions ${{ matrix.repo }}
         env:
-          GH_TOKEN: ${{ secrets.PULL_REQUEST_TOKEN }}
-          DLPBOT_GIT_PROTOCOL: ${{ vars.DLPBOT_GIT_PROTOCOL || 'ssh' }}
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
           DLPBOT_ACTIONS_COOLDOWN: ${{ vars.DLPBOT_ACTIONS_COOLDOWN || '7 days' }}
           WORKING_REPO: ${{ matrix.repo }}
         run: |
@@ -94,6 +85,7 @@ jobs:
           python -m bot actions \
             --pr \
             --verbose \
-            --head "${HEAD_OWNER}:bot/update-actions" \
+            --git-protocol https \
+            --head "${HEAD_OWNER}:${HEAD_BRANCH}" \
             -- \
             "${WORKING_REPO}" ../"${WORKING_REPO}"

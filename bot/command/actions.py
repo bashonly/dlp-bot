@@ -36,7 +36,9 @@ except ImportError:
 
 GIT_FORGE = 'github'
 
-DEFAULT_HEAD_LABEL = 'dlp-bot:bot/update-actions'
+DEFAULT_HEAD_OWNER = 'dlp-bot'
+DEFAULT_HEAD_BRANCH = 'bot/update-actions'
+DEFAULT_HEAD_LABEL = f'{DEFAULT_HEAD_OWNER}:{DEFAULT_HEAD_BRANCH}'
 
 
 def configure_parser(parser: argparse.ArgumentParser):
