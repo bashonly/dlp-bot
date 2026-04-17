@@ -7,7 +7,8 @@ import re
 import typing
 import urllib.request
 
-SHA_RE = re.compile(r'[0-9a-f]{40}')
+SHA_PATTERN = r'[0-9a-f]{40}'
+SHA_RE = re.compile(SHA_PATTERN)
 
 
 def is_sha(commitish: str) -> bool:

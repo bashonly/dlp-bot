@@ -17,6 +17,7 @@ from bot.github import (
 )
 from bot.knowledge import ACTIONS
 from bot.utils import (
+    SHA_PATTERN,
     BotError,
     is_sha,
     parse_owner_and_repo,
@@ -29,6 +30,8 @@ except ImportError:
 
 
 WORKFLOWS_DIRECTORY = '.github/workflows'
+
+USES_RE_TMPL = r'\buses:\s+(?P<path>{label}(?:/[\w-]+)?)@(?P<sha>{sha})\s+#\s*(?P<tag>v?[0-9]+(?:\.[0-9]+)*)'
 
 
 class ActionError(BotError):
@@ -46,6 +49,15 @@ class Action:
     default_branch: str
     action_slug: str | None = None
 
+    def __str__(self):
+        return f'{self.owner}/{self.repo}'
+
+    def __lt__(self, other):
+        return str(self) < other
+
+    def __gt__(self, other):
+        return str(self) > other
+
 
 @dataclasses.dataclass(frozen=True)
 class ActionPin:
@@ -54,8 +66,7 @@ class ActionPin:
     tag: str
 
 
-type WorkflowResults = dict[pathlib.Path, dict[str, ActionPin]]
-type AllUpdates = dict[Action, tuple[ActionPin, ActionPin]]
+type Updates = dict[Action, tuple[ActionPin, ActionPin]]
 
 
 def parse_gha_uses_value(uses_value: str) -> tuple[str, str]:
@@ -72,36 +83,15 @@ def release_is_too_hot(release: dict[str, typing.Any], cooldown: dt.datetime | N
     return dt.datetime.fromisoformat(timestamp) > cooldown
 
 
-def get_pin_and_comment(uses_pin: str, workflow_text: str) -> tuple[str, str]:
-    mobj = re.search(rf'\buses:\s+{re.escape(uses_pin)}\s+#\s*(?P<tag>v?[0-9]+(?:\.[0-9]+)*)', workflow_text)
+def get_tag_from_comment(action: Action, sha: str, workflow_text: str) -> str:
+    mobj = re.search(USES_RE_TMPL.format(label=re.escape(str(action)), sha=sha), workflow_text)
     if not mobj:
-        raise WorkflowError(f'Unable to find tag comment for "{uses_pin}" in workflow')
+        raise WorkflowError(f'Unable to find tag comment for "{action}" in workflow')
 
-    return uses_pin, mobj.group('tag')
-
-
-def update_pins_in_workflow_text(
-    full_action_name: str,
-    latest_pin: ActionPin,
-    workflow_text: str,
-    workflow_path: pathlib.Path,
-) -> str:
-    replaced_text = re.sub(
-        rf'\buses:\s+{re.escape(full_action_name)}@[0-9a-fA-F]{{40}}(?:\s+#.+)?',
-        f'uses: {full_action_name}@{latest_pin.sha}  # {latest_pin.tag}',
-        workflow_text,
-    )
-
-    if replaced_text == workflow_text:
-        raise WorkflowError(f'Failed to replace action pin in: {workflow_path}')
-
-    return replaced_text
+    return mobj.group('tag')
 
 
-def make_pull_request_description(
-    workflows: WorkflowResults,
-    all_updates: AllUpdates,
-) -> str:
+def make_pull_request_description(workflows: list[Workflow], all_updates: Updates) -> str:
     return '\n'.join(
         (
             '<!-- BEGIN dlp-bot generated section -->\n',
@@ -114,8 +104,8 @@ def make_pull_request_description(
 
 
 def make_bulk_commit_message(
-    workflows: WorkflowResults,
-    all_updates: AllUpdates,
+    workflows: list[Workflow],
+    all_updates: Updates,
     *,
     prefix: str | None = None,
     addendum: str | None = None,
@@ -130,12 +120,12 @@ def make_bulk_commit_message(
 
 
 def make_bulk_commit_title(
-    workflows: WorkflowResults,
-    all_updates: AllUpdates,
+    workflows: list[Workflow],
+    all_updates: Updates,
     *,
     prefix: str | None = None,
 ) -> str:
-    workflows_count = len(list(filter(None, workflows.values())))
+    workflows_count = len([workflow for workflow in workflows if workflow.updated_actions])
     actions_count = len(all_updates)
     return ''.join(
         (
@@ -148,7 +138,7 @@ def make_bulk_commit_title(
     )
 
 
-def make_bulk_commit_body(all_updates: AllUpdates) -> str:
+def make_bulk_commit_body(all_updates: Updates) -> str:
     return '\n'.join(sorted(make_commit_line(action, old, new) for action, (old, new) in all_updates.items()))
 
 
@@ -169,29 +159,23 @@ def make_incremental_commit_message(
 
 
 def make_commit_line(action: Action, old: ActionPin, new: ActionPin, *, prefix: str = '* ') -> str:
-    return f'{prefix}Bump {action.owner}/{action.repo} {old.tag} => {new.tag}'
+    return f'{prefix}Bump {action} {old.tag} => {new.tag}'
 
 
-def generate_workflows_report(
-    workflows: WorkflowResults,
-) -> collections.abc.Iterator[str]:
-    slice_val = (len(WORKFLOWS_DIRECTORY.split('/')) + 1) * -1
-
+def generate_workflows_report(workflows: list[Workflow]) -> collections.abc.Iterator[str]:
     yield 'workflow | updates'
     yield '---------|--------'
-    for workflow_path, updated_actions in sorted(workflows.items()):
-        if not updated_actions:
+    for workflow in sorted(workflows):
+        if not workflow.updated_actions:
             continue
-        updates = ', '.join(f'`{name}`' for name in updated_actions)
-        yield f'**`{"/".join(workflow_path.parts[slice_val:])}`** | {updates}'
+        updates = ', '.join(f'`{action}`' for action in workflow.updated_actions)
+        yield f'**`{workflow}`** | {updates}'
 
 
-def generate_actions_report(
-    all_updates: AllUpdates,
-) -> collections.abc.Iterator[str]:
+def generate_actions_report(all_updates: Updates) -> collections.abc.Iterator[str]:
     yield 'action | old | new | diff'
     yield '-------|-----|-----|-----'
-    for action, (old, new) in sorted(all_updates.items(), key=lambda a: f'{a[0].owner}/{a[0].repo}'):
+    for action, (old, new) in sorted(all_updates.items()):
         md_old = old.tag
         md_new = new.tag
         # bolden and italicize the differing parts
@@ -210,16 +194,78 @@ def generate_actions_report(
 
         md_old = ('v' if old.tag.startswith('v') else '') + md_old.lstrip('.')
         md_new = ('v' if new.tag.startswith('v') else '') + md_new.lstrip('.')
-        github_url = f'https://github.com/{action.owner}/{action.repo}'
+        github_url = f'https://github.com/{action}'
 
         yield ' | '.join(
             (
-                f'[**`{action.owner}/{action.repo}`**](<{github_url}>)',
+                f'[**`{action}`**](<{github_url}>)',
                 f'[{md_old}](<{github_url}/releases/tag/{old.tag}>)',
                 f'[{md_new}](<{github_url}/releases/tag/{new.tag}>)',
                 f'[`{old.sha[:7]}...{new.sha[:7]}`](<{github_url}/compare/{old.sha}...{new.sha}>)',
             )
         )
+
+
+class Workflow:
+    def __init__(self, /, path: pathlib.Path):
+        self.path = path.resolve()
+        self._text = path.read_text(encoding='utf-8')
+        self._unwritten = False
+        self.updated_actions: Updates = {}
+        self.needed_updates: set[Action] = set()
+
+    def __str__(self):
+        return self.path.name
+
+    def __lt__(self, other):
+        return str(self) < other
+
+    def __gt__(self, other):
+        return str(self) > other
+
+    @property
+    def text(self, /) -> str:
+        return self._text
+
+    def update_text(self, /, text: str, *, require_update: bool = False):
+        if text != self._text:
+            self._text = text
+            self._unwritten = True
+        elif require_update:
+            raise WorkflowError(f'failed to update "{self}"')
+
+    def update_pins(self, /, old: ActionPin, new: ActionPin):
+        if old.action not in self.needed_updates:
+            raise WorkflowError(f'unexpected attempt to update pins for "{self}"')
+
+        self.needed_updates.remove(old.action)
+        self.update_text(
+            re.sub(
+                USES_RE_TMPL.format(label=re.escape(str(old.action)), sha=SHA_PATTERN),
+                rf'uses: \g<path>@{new.sha}  # {new.tag}',
+                self.text,
+            ),
+            require_update=True,
+        )
+        self.updated_actions[old.action] = (old, new)
+
+    def write(self, /):
+        if self._unwritten:
+            self.path.write_text(self.text, encoding='utf-8')
+            self._unwritten = False
+
+    def parse(self) -> dict[typing.Any, typing.Any]:
+        if yaml is None:
+            raise WorkflowError('the pyyaml package (yaml library) is required')
+
+        parsed = yaml.safe_load(self.text)
+
+        if not isinstance(parsed, dict):
+            raise WorkflowError(f'unrecognized workflow file format for "{self}"')
+        if 'jobs' not in parsed:
+            raise WorkflowError(f'no jobs found in workflow for "{self}"')
+
+        return parsed
 
 
 class ActionsUpdater:
@@ -243,7 +289,7 @@ class ActionsUpdater:
 
         self._latest_cache: dict[Action, ActionPin] = {}
         self._actions_cache: dict[tuple[str, str], Action] = {
-            parse_owner_and_repo(key): Action(**action) for key, action in ACTIONS.items()
+            parse_owner_and_repo(key): Action(**action_dict) for key, action_dict in ACTIONS.items()
         }
 
     @classmethod
@@ -299,46 +345,58 @@ class ActionsUpdater:
             return None
         return uses_value
 
+    def get_action(self, /, github_action_path: str) -> Action:
+        owner, repo = parse_owner_and_repo(github_action_path)
+        if (owner, repo) in self._actions_cache:
+            return self._actions_cache[(owner, repo)]
+
+        print(f'Getting info about {owner}/{repo}', file=sys.stderr)
+        banners = self.web.fetch_repo(owner, repo)['payload']['codeViewRepoRoute']['overview']['banners']
+        action_slug = banners.get('actionSlug')
+        default_branch = self.api.get_repository(owner, repo)['default_branch']
+        action = Action(owner, repo, default_branch=default_branch, action_slug=action_slug)
+        self._actions_cache[(owner, repo)] = action
+
+        return action
+
+    def get_action_and_current_pin(self, /, uses_value: str, text: str) -> tuple[Action, ActionPin]:
+        github_action_path, current_sha = parse_gha_uses_value(uses_value)
+        action = self.get_action(github_action_path)
+        current_tag = get_tag_from_comment(action, current_sha, text)
+
+        return action, ActionPin(action=action, sha=current_sha, tag=current_tag)
+
     def parse_actions_from_workflow(
         self,
         /,
-        workflow_path: pathlib.Path,
-    ) -> list[tuple[str, str]]:
-        if yaml is None:
-            raise ImportError('the pyyaml package (yaml library) is required')
+        workflow: Workflow,
+    ) -> dict[Action, ActionPin]:
+        actions = {}
 
-        if not workflow_path.is_file():
-            raise WorkflowError(f'Invalid input: {workflow_path}')
-
-        workflow_text = workflow_path.read_text(encoding='utf-8')
-        workflow_yaml = yaml.safe_load(workflow_text)
-        if not isinstance(workflow_yaml, dict):
-            raise WorkflowError(f'Unrecognized workflow file format: {workflow_path}')
-        if 'jobs' not in workflow_yaml:
-            raise WorkflowError(f'No jobs found in workflow: {workflow_path}')
-
-        actions = []
-
-        jobs = workflow_yaml['jobs']
+        jobs = workflow.parse()['jobs']
         if not isinstance(jobs, dict):
-            raise WorkflowError(f'Unrecognized jobs format: {workflow_path}')
+            raise WorkflowError(f'unrecognized jobs format in "{workflow}"')
 
         for job_name, job in jobs.items():
             if not isinstance(job, dict):
-                raise WorkflowError(f'Unrecognized job format for "{job_name}": {workflow_path}')
+                raise WorkflowError(f'unrecognized job format for "{job_name}" in "{workflow}"')
 
             if 'uses' in job and self._validate_uses_value(job['uses']):
-                actions.append(get_pin_and_comment(job['uses'], workflow_text))
+                action, current_pin = self.get_action_and_current_pin(job['uses'], workflow.text)
+                actions[action] = current_pin
 
             elif 'steps' in job:
                 steps = job['steps']
                 if not isinstance(steps, list):
-                    raise WorkflowError(f'Unrecognized steps format for job "{job_name}": {workflow_path}')
+                    raise WorkflowError(f'unrecognized steps format for job "{job_name}" in "{workflow}"')
+
                 for step_number, step in enumerate(steps, 1):
                     if not isinstance(step, dict):
-                        raise WorkflowError(f'Unrecognized step format for "{job_name}/{step_number}": {workflow_path}')
+                        raise WorkflowError(f'unrecognized step format for "{job_name}/{step_number}" in "{workflow}"')
+
                     if 'uses' in step and self._validate_uses_value(step['uses']):
-                        actions.append(get_pin_and_comment(step['uses'], workflow_text))
+                        action, current_pin = self.get_action_and_current_pin(step['uses'], workflow.text)
+                        actions[action] = current_pin
 
         return actions
 
@@ -374,15 +432,18 @@ class ActionsUpdater:
         /,
         action: Action,
     ) -> ActionPin:
-        print(f'Getting latest eligible release for {action.owner}/{action.repo}', file=sys.stderr)
+        if action in self._latest_cache:
+            return self._latest_cache[action]
+
+        print(f'Getting latest eligible release for {action}', file=sys.stderr)
 
         latest_tag = None
         latest_release = None
 
         if action.action_slug:
-            latest_tag = self.web.fetch_actions_marketplace(action.action_slug)['payload']['releaseData'][
-                'latestRelease'
-            ]['tagName']
+            latest_tag = self.web.fetch_actions_marketplace(
+                action.action_slug,
+            )['payload']['releaseData']['latestRelease']['tagName']
 
         # Only the first page of releases should be sufficient
         releases = self.api.list_releases(action.owner, action.repo)
@@ -393,8 +454,7 @@ class ActionsUpdater:
             if latest_tag and release['tag_name'] == latest_tag:
                 if release_is_too_hot(release, self._exclude_newer):
                     print(
-                        f'The latest release for {action.owner}/{action.repo} is being skipped '
-                        f'per cooldown policy: {latest_tag}',
+                        f'the latest release for {action} is being skipped per cooldown policy: {latest_tag}',
                         file=sys.stderr,
                     )
                     latest_tag = None
@@ -407,23 +467,25 @@ class ActionsUpdater:
                     continue
                 if release_is_too_hot(release, self._exclude_newer):
                     print(
-                        f'Release "{release["tag_name"]}" for {action.owner}/{action.repo} '
-                        'is being skipped per cooldown policy',
+                        f'release "{release["tag_name"]}" for {action} is being skipped per cooldown policy',
                         file=sys.stderr,
                     )
                     continue
                 latest_release = release
                 break
         else:
-            raise ActionError(f'Unable to get latest eligible release for action: {action.owner}/{action.repo}')
+            raise ActionError(f'unable to get latest eligible release for action: {action}')
 
         latest_tag, latest_sha = self.get_tag_and_sha_from_release(action.owner, action.repo, latest_release)
 
         # Sanity check
         if latest_tag not in self.web.fetch_branch_commits(action.owner, action.repo, latest_sha)['tags']:
-            raise ValueError(f'SHA not found in {action.owner}/{action.repo}: {latest_sha}')
+            raise ActionError(f'SHA not found in {action}: {latest_sha}')
 
-        return ActionPin(action, sha=latest_sha, tag=latest_tag)
+        latest_pin = ActionPin(action, sha=latest_sha, tag=latest_tag)
+        self._latest_cache[action] = latest_pin
+
+        return latest_pin
 
     def update(
         self,
@@ -433,70 +495,39 @@ class ActionsUpdater:
         export_patches: str | pathlib.Path | None = None,
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
-    ) -> tuple[WorkflowResults, AllUpdates]:
+    ) -> tuple[list[Workflow], Updates]:
         if commit_type not in ('bulk', 'incremental'):
             raise ValueError(f'invalid commit_type value: {commit_type}')
 
         base_path = pathlib.Path(self.git.repo_dir).resolve()
+        gha_path = base_path / WORKFLOWS_DIRECTORY
         starting_point = self.git.bot_rev_parse('HEAD')
 
-        gha_path = base_path / WORKFLOWS_DIRECTORY
-
-        workflows: WorkflowResults = {
-            workflow_path: {} for workflow_path in itertools.chain(gha_path.glob('*.yml'), gha_path.glob('*.yaml'))
-        }
-
+        workflows = [Workflow(path) for path in itertools.chain(gha_path.glob('*.yml'), gha_path.glob('*.yaml'))]
         all_updates = {}
 
-        for workflow_path, current_workflow_updates in workflows.items():
-            used_actions = self.parse_actions_from_workflow(workflow_path)
-
-            for uses_value, current_tag in used_actions:
-                full_action_name, current_sha = parse_gha_uses_value(uses_value)
-
-                if full_action_name in current_workflow_updates:
+        for workflow in workflows:
+            actions = self.parse_actions_from_workflow(workflow)
+            for action, current_pin in actions.items():
+                if action in workflow.updated_actions:
                     continue
 
-                owner, repo = parse_owner_and_repo(full_action_name)
-
-                if (owner, repo) in self._actions_cache:
-                    action = self._actions_cache[(owner, repo)]
-                else:
-                    print(f'Getting info about {owner}/{repo}', file=sys.stderr)
-                    banners = self.web.fetch_repo(owner, repo)['payload']['codeViewRepoRoute']['overview']['banners']
-                    action_slug = banners.get('actionSlug')
-                    default_branch = self.api.get_repository(owner, repo)['default_branch']
-                    action = Action(owner, repo, default_branch=default_branch, action_slug=action_slug)
-                    self._actions_cache[(owner, repo)] = action
-
-                current_pin = ActionPin(action, sha=current_sha, tag=current_tag)
-
-                if action in self._latest_cache:
-                    latest_pin = self._latest_cache[action]
-                else:
-                    latest_pin = self.get_latest_action_pin(action)
-                    self._latest_cache[action] = latest_pin
-
+                latest_pin = self.get_latest_action_pin(action)
                 if current_pin.sha == latest_pin.sha:
                     continue
 
-                current_workflow_updates[full_action_name] = latest_pin
+                workflow.needed_updates.add(action)
                 all_updates[action] = (current_pin, latest_pin)
 
         updated_paths = set()
 
         if commit_type == 'incremental':
             for action, (old, new) in all_updates.items():
-                for workflow_path, current_workflow_updates in workflows.items():
-                    workflow_text = workflow_path.read_text()
-                    for full_action_name, latest_pin in current_workflow_updates.items():
-                        if (action.owner, action.repo) == parse_owner_and_repo(full_action_name):
-                            workflow_text = update_pins_in_workflow_text(
-                                full_action_name, latest_pin, workflow_text, workflow_path
-                            )
-
-                    workflow_path.write_text(workflow_text)
-                    updated_paths.add(workflow_path)
+                for workflow in workflows:
+                    if action in workflow.needed_updates:
+                        workflow.update_pins(old, new)
+                        workflow.write()
+                        updated_paths.add(workflow.path)
 
                 commit_msg = make_incremental_commit_message(
                     action, old, new, prefix=commit_prefix, addendum=commit_addendum
@@ -505,15 +536,13 @@ class ActionsUpdater:
                 updated_paths.clear()
 
         else:  # Minimize I/O for bulk commit
-            for workflow_path, current_workflow_updates in workflows.items():
-                workflow_text = workflow_path.read_text()
-                for full_action_name, latest_pin in current_workflow_updates.items():
-                    workflow_text = update_pins_in_workflow_text(
-                        full_action_name, latest_pin, workflow_text, workflow_path
-                    )
+            for workflow in workflows:
+                needed_updates = workflow.needed_updates.copy()
+                for action in needed_updates:
+                    workflow.update_pins(*all_updates[action])
 
-                workflow_path.write_text(workflow_text)
-                updated_paths.add(workflow_path)
+                workflow.write()
+                updated_paths.add(workflow.path)
 
             commit_msg = make_bulk_commit_message(
                 workflows, all_updates, prefix=commit_prefix, addendum=commit_addendum
@@ -528,8 +557,8 @@ class ActionsUpdater:
     def parse_results(
         self,
         /,
-        workflows: WorkflowResults,
-        all_updates: AllUpdates,
+        workflows: list[Workflow],
+        all_updates: Updates,
         *,
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
