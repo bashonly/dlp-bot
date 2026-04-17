@@ -956,7 +956,7 @@ class GitHubPullRequest:
                 self.base.owner,
                 self.base.repo,
                 state='open',
-                head=f'{self.head.owner}/{self.head.branch}',
+                head=f'{self.head.owner}:{self.head.branch}',
                 base=self.base.branch,
                 sort='created',
                 direction='desc',
