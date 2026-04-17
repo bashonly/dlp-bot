@@ -140,7 +140,8 @@ def make_bulk_commit_title(
             prefix or '',
             f'Update {actions_count} action',
             's' if actions_count > 1 else '',
-            f' in {workflows_count} workflows',
+            f' in {workflows_count} workflow',
+            's' if workflows_count > 1 else '',
         )
     )
 
