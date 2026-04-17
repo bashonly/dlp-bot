@@ -78,12 +78,6 @@ def parse_branch_compare_label(label: str) -> tuple[str, str | None, str]:
     return owner, repo or None, branch
 
 
-# TODO: remove. not used currently?
-def make_relative_branch(label: str) -> RelativeBranch:
-    owner, _, branch = parse_branch_compare_label(label)
-    return RelativeBranch(owner=owner, branch=branch)
-
-
 def make_absolute_branch(label: str, repo: str | None = None) -> AbsoluteBranch:
     owner, parsed_repo, branch = parse_branch_compare_label(label)
     repo = repo or parsed_repo
