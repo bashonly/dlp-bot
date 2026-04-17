@@ -9,8 +9,7 @@ permissions: {}
 jobs:
   output_variables:
     name: Output variables
-    # Must be either a workflow_dispatch event payload OR a scheduled run on yt-dlp/dlp-bot
-    if: github.event.workflow == '.github/workflows/update-action.yml' || github.repository == 'yt-dlp/dlp-bot'
+    if: github.event_name != 'schedule' || !github.event.repository.fork
     runs-on: ubuntu-latest
     outputs:
       default_head_branch: ${{ steps.variables.outputs.default_head_branch }}
@@ -38,6 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        fail-fast: false
         include: ${{ fromJSON(needs.output_variables.outputs.matrix) }}
     env:
       HEAD_BRANCH: ${{ vars.ACTIONS_BRANCH || needs.output_variables.outputs.default_head_branch }}
