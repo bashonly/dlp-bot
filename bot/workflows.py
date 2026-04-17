@@ -31,6 +31,14 @@ except ImportError:
 WORKFLOWS_DIRECTORY = '.github/workflows'
 
 
+class ActionError(BotError):
+    pass
+
+
+class WorkflowError(BotError):
+    pass
+
+
 @dataclasses.dataclass(frozen=True)
 class Action:
     owner: str
@@ -46,12 +54,8 @@ class ActionPin:
     tag: str
 
 
-class ActionError(BotError):
-    pass
-
-
-class WorkflowError(BotError):
-    pass
+type WorkflowResults = dict[pathlib.Path, dict[str, ActionPin]]
+type AllUpdates = dict[Action, tuple[ActionPin, ActionPin]]
 
 
 def parse_gha_uses_value(uses_value: str) -> tuple[str, str]:
@@ -95,8 +99,8 @@ def update_pins_in_workflow_text(
 
 
 def make_pull_request_description(
-    workflows: dict[pathlib.Path, dict[str, ActionPin]],
-    all_updates: dict[Action, tuple[ActionPin, ActionPin]],
+    workflows: WorkflowResults,
+    all_updates: AllUpdates,
 ) -> str:
     return '\n'.join(
         (
@@ -110,8 +114,8 @@ def make_pull_request_description(
 
 
 def make_bulk_commit_message(
-    workflows: dict[pathlib.Path, dict[str, ActionPin]],
-    all_updates: dict[Action, tuple[ActionPin, ActionPin]],
+    workflows: WorkflowResults,
+    all_updates: AllUpdates,
     *,
     prefix: str | None = None,
     addendum: str | None = None,
@@ -126,8 +130,8 @@ def make_bulk_commit_message(
 
 
 def make_bulk_commit_title(
-    workflows: dict[pathlib.Path, dict[str, ActionPin]],
-    all_updates: dict[Action, tuple[ActionPin, ActionPin]],
+    workflows: WorkflowResults,
+    all_updates: AllUpdates,
     *,
     prefix: str | None = None,
 ) -> str:
@@ -144,7 +148,7 @@ def make_bulk_commit_title(
     )
 
 
-def make_bulk_commit_body(all_updates: dict[Action, tuple[ActionPin, ActionPin]]) -> str:
+def make_bulk_commit_body(all_updates: AllUpdates) -> str:
     return '\n'.join(sorted(make_commit_line(action, old, new) for action, (old, new) in all_updates.items()))
 
 
@@ -169,7 +173,7 @@ def make_commit_line(action: Action, old: ActionPin, new: ActionPin, *, prefix: 
 
 
 def generate_workflows_report(
-    workflows: dict[pathlib.Path, dict[str, ActionPin]],
+    workflows: WorkflowResults,
 ) -> collections.abc.Iterator[str]:
     slice_val = (len(WORKFLOWS_DIRECTORY.split('/')) + 1) * -1
 
@@ -183,7 +187,7 @@ def generate_workflows_report(
 
 
 def generate_actions_report(
-    all_updates: dict[Action, tuple[ActionPin, ActionPin]],
+    all_updates: AllUpdates,
 ) -> collections.abc.Iterator[str]:
     yield 'action | old | new | diff'
     yield '-------|-----|-----|-----'
@@ -429,7 +433,7 @@ class ActionsUpdater:
         export_patches: str | pathlib.Path | None = None,
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
-    ) -> tuple[dict[pathlib.Path, dict[str, ActionPin]], dict[Action, tuple[ActionPin, ActionPin]]]:
+    ) -> tuple[WorkflowResults, AllUpdates]:
         if commit_type not in ('bulk', 'incremental'):
             raise ValueError(f'invalid commit_type value: {commit_type}')
 
@@ -438,7 +442,7 @@ class ActionsUpdater:
 
         gha_path = base_path / WORKFLOWS_DIRECTORY
 
-        workflows: dict[pathlib.Path, dict[str, ActionPin]] = {
+        workflows: WorkflowResults = {
             workflow_path: {} for workflow_path in itertools.chain(gha_path.glob('*.yml'), gha_path.glob('*.yaml'))
         }
 
@@ -524,8 +528,8 @@ class ActionsUpdater:
     def parse_results(
         self,
         /,
-        workflows: dict[pathlib.Path, dict[str, ActionPin]],
-        all_updates: dict[Action, tuple[ActionPin, ActionPin]],
+        workflows: WorkflowResults,
+        all_updates: AllUpdates,
         *,
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
