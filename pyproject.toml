@@ -9,7 +9,7 @@ authors = [
 ]
 description = "automated tools for the dlp org"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = [
     "actions",
     "bot",
@@ -175,7 +175,7 @@ avoid-escape = false
 quote-style = "single"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 
 [[tool.mypy.overrides]]
 module = [
