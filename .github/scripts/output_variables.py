@@ -19,13 +19,6 @@ from bot.knowledge import SERVICED_REPOS
 
 matrix = [v for v in SERVICED_REPOS.values() if 'actions' in v['services']]
 
-# For testing
-for m in matrix:
-    if m['repo'] == 'protobug':
-        m['test'] = True
-    else:
-        m['test'] = False
-
 print(json.dumps(matrix, indent=2))
 with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
     f.write(f'default_head_branch={DEFAULT_HEAD_BRANCH}\n')
