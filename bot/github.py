@@ -24,10 +24,11 @@ class GitHubError(BotError):
 
 
 @dataclasses.dataclass(frozen=True)
-class Branch:
-    __slots__ = ('branch',)
-
-    branch: str
+class BaseBranch:
+    def __new__(cls, *args, **kwargs):
+        if cls == BaseBranch:
+            raise TypeError('cannot instantiate base class')
+        return super().__new__(cls)
 
     def __post_init__(self):
         for slot in self.__slots__:
@@ -37,9 +38,16 @@ class Branch:
             if not value:
                 raise ValueError(f'{type(self).__name__}.{slot} value cannot be empty')
 
+    def __str__(self):
+        return f'{self.owner}:{self.branch}'
+
+    @property
+    def label(self, /):
+        return str(self)
+
 
 @dataclasses.dataclass(frozen=True)
-class RelativeBranch(Branch):
+class RelativeBranch(BaseBranch):
     __slots__ = ('branch', 'owner')
 
     owner: str
@@ -47,7 +55,7 @@ class RelativeBranch(Branch):
 
 
 @dataclasses.dataclass(frozen=True)
-class AbsoluteBranch(Branch):
+class AbsoluteBranch(BaseBranch):
     # GitHub supports this label pattern since 2024
     # Ref: https://github.com/github/docs/issues/34381
     __slots__ = ('branch', 'owner', 'repo')
@@ -55,6 +63,10 @@ class AbsoluteBranch(Branch):
     owner: str
     repo: str
     branch: str
+
+    @property
+    def full_label(self, /):
+        return f'{self.owner}:{self.repo}:{self.branch}'
 
 
 def parse_branch_compare_label(label: str) -> tuple[str, str | None, str]:
@@ -956,7 +968,7 @@ class GitHubPullRequest:
                 self.base.owner,
                 self.base.repo,
                 state='open',
-                head=f'{self.head.owner}:{self.head.branch}',
+                head=self.head.label,
                 base=self.base.branch,
                 sort='created',
                 direction='desc',
@@ -1022,7 +1034,7 @@ class GitHubPullRequest:
             self.api.create_pull_request(
                 self.base.owner,
                 self.base.repo,
-                f'{self.head.owner}:{self.head.branch}',
+                self.head.label,
                 self.base.branch,
                 head_repo=self.head.repo,
                 title=self.update_title(title) if title else self.title,
@@ -1147,7 +1159,7 @@ class GitHubPullRequest:
         ):
             return True
 
-        print(f'failed to sync branch: {self.head.owner}:{self.head.branch}', file=sys.stderr)
+        print(f'failed to sync branch: {self.head.label}', file=sys.stderr)
         return False
 
     def delete_branch(self, /) -> bool:
@@ -1155,7 +1167,7 @@ class GitHubPullRequest:
             self.state = 'closed'
             return True
 
-        print(f'unable to delete branch: {self.head.owner}:{self.head.branch}', file=sys.stderr)
+        print(f'unable to delete branch: {self.head.label}', file=sys.stderr)
         return False
 
     @property
