@@ -252,7 +252,7 @@ class Git:
             return
 
         actual_remote_url = self.bot_get_remote_url(remote_name, push=push)
-        if remote_url == actual_remote_url:
+        if actual_remote_url in (remote_url, remote_url.removesuffix('.git')):
             return
 
         raise GitError(
