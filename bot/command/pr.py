@@ -126,7 +126,7 @@ def _real_run(args: argparse.Namespace):
 
     pr.create_or_update()
 
-    raise SuccessMessage(pr.info['url'])
+    raise SuccessMessage(pr.info['html_url'])
 
 
 def run(args: argparse.Namespace) -> int:

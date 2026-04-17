@@ -286,7 +286,7 @@ def _real_run(args: argparse.Namespace):
 
         pr.create_or_update()
 
-        raise SuccessMessage(pr.info['url'])
+        raise SuccessMessage(pr.info['html_url'])
 
     if args.export_pr:
         args.export_pr.mkdir(parents=True, exist_ok=True)
