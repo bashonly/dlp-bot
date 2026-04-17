@@ -18,10 +18,8 @@ from bot.github import (
 from bot.knowledge import ACTIONS
 from bot.utils import (
     BotError,
-    # filter_dict,
     is_sha,
     parse_owner_and_repo,
-    # remove_around,
 )
 
 try:
