@@ -43,6 +43,16 @@ def filter_dict(
     return {k: v for k, v in dct.items() if cndn(k, v)}
 
 
+def safe_format(s: str | None, **kwargs) -> str | None:
+    if not s or not isinstance(s, str):
+        return None
+
+    try:
+        return s.format(**kwargs)
+    except KeyError:
+        return s
+
+
 def remove_around(data: str, before: str, after: str) -> str:
     return data.removeprefix(before).removesuffix(after)
 
@@ -102,28 +112,3 @@ def table_a_raza(header: tuple[str, ...], rows: list[tuple[str, ...]]) -> collec
     yield '-|-'.join(''.ljust(width, '-') for width in widths)
     for row in rows:
         yield ' | '.join(col.ljust(width) for width, col in zip(widths, row, strict=True))
-
-
-def safe_format(s: str | None, **kwargs) -> str | None:
-    if not s or not isinstance(s, str):
-        return None
-
-    try:
-        return s.format(**kwargs)
-    except KeyError:
-        return s
-
-
-# TODO: remove? not used anymore
-def safely(
-    obj: typing.Any,
-    path: list[str | int],
-) -> typing.Any:
-    """Extremely primitive, simple and stupid version of traverse_obj"""
-    for key in path:
-        try:
-            obj = obj[key]
-        except (IndexError, KeyError, TypeError):
-            return None
-
-    return obj
