@@ -36,8 +36,8 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        fail-fast: false
         include: ${{ fromJSON(needs.output_variables.outputs.matrix) }}
     env:
       HEAD_BRANCH: ${{ vars.ACTIONS_BRANCH || needs.output_variables.outputs.default_head_branch }}
