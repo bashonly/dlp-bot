@@ -68,6 +68,14 @@ class ActionPin:
 
 type Updates = dict[Action, tuple[ActionPin, ActionPin]]
 
+ACTIONLINT_ACTION = Action(owner='rhysd', repo='actionlint', default_branch='main')
+ACTIONLINT_ASSET_TMPL = 'actionlint_{version}_linux_amd64.tar.gz'
+ACTIONLINT_RE = re.compile(r"""(?x)
+    (?P<before>ACTIONLINT_VERSION:\s+(?P<q>["\']))
+    (?P<tag>(?!(?P=q)).+)
+    (?P<inbetween>(?P=q)\s+ACTIONLINT_SHA256SUM:\s+["\']?)
+    (?P<sha>[0-9a-f]{64})""")
+
 
 def parse_gha_uses_value(uses_value: str) -> tuple[str, str]:
     action_value, _, commit_sha = uses_value.partition('@')
@@ -236,7 +244,7 @@ class Workflow:
 
     def update_pins(self, /, old: ActionPin, new: ActionPin):
         if old.action not in self.needed_updates:
-            raise WorkflowError(f'unexpected attempt to update pins for "{self}"')
+            raise WorkflowError(f'unexpected attempt to update "{old.action}" for "{self}"')
 
         self.needed_updates.remove(old.action)
         self.update_text(
@@ -266,6 +274,18 @@ class Workflow:
             raise WorkflowError(f'no jobs found in workflow for "{self}"')
 
         return parsed
+
+    # temporary actionlint hack
+    def _update_actionlint(self, /, old: ActionPin, new: ActionPin):
+        if old.action not in self.needed_updates:
+            raise WorkflowError(f'unexpected attempt to update "{old.action}" for "{self}"')
+
+        self.needed_updates.remove(old.action)
+        self.update_text(
+            ACTIONLINT_RE.sub(rf'\g<before>{new.tag}\g<inbetween>{new.sha}', self.text),
+            require_update=True,
+        )
+        self.updated_actions[old.action] = (old, new)
 
 
 class ActionsUpdater:
@@ -482,9 +502,18 @@ class ActionsUpdater:
         if latest_tag not in self.web.fetch_branch_commits(action.owner, action.repo, latest_sha)['tags']:
             raise ActionError(f'SHA not found in {action}: {latest_sha}')
 
+        # temporary actionlint hack
+        if action == ACTIONLINT_ACTION:
+            latest_tag = latest_tag.removeprefix('v')
+            latest_sha = next(
+                asset['digest'].removeprefix('sha256:')
+                for asset in release['assets']
+                if asset['name'] == ACTIONLINT_ASSET_TMPL.format(version=latest_tag)
+                and asset['digest'].startswith('sha256:')
+            )
+
         latest_pin = ActionPin(action, sha=latest_sha, tag=latest_tag)
         self._latest_cache[action] = latest_pin
-
         return latest_pin
 
     def update(
@@ -519,13 +548,28 @@ class ActionsUpdater:
                 workflow.needed_updates.add(action)
                 all_updates[action] = (current_pin, latest_pin)
 
+            # temporary actionlint hack
+            lint_old_pin = self._parse_for_actionlint_pin(workflow)
+            if not lint_old_pin:
+                continue
+            lint_new_pin = self.get_latest_action_pin(ACTIONLINT_ACTION)
+            if lint_old_pin == lint_new_pin:
+                continue
+            workflow.needed_updates.add(ACTIONLINT_ACTION)
+            all_updates[ACTIONLINT_ACTION] = (lint_old_pin, lint_new_pin)
+
         updated_paths = set()
 
         if commit_type == 'incremental':
             for action, (old, new) in all_updates.items():
                 for workflow in workflows:
                     if action in workflow.needed_updates:
-                        workflow.update_pins(old, new)
+                        # temporary actionlint hack
+                        if action == ACTIONLINT_ACTION:
+                            workflow._update_actionlint(old, new)
+                        else:
+                            workflow.update_pins(old, new)
+
                         workflow.write()
                         updated_paths.add(workflow.path)
 
@@ -539,7 +583,11 @@ class ActionsUpdater:
             for workflow in workflows:
                 needed_updates = workflow.needed_updates.copy()
                 for action in needed_updates:
-                    workflow.update_pins(*all_updates[action])
+                    # temporary actionlint hack
+                    if action == ACTIONLINT_ACTION:
+                        workflow._update_actionlint(*all_updates[action])
+                    else:
+                        workflow.update_pins(*all_updates[action])
 
                 workflow.write()
                 updated_paths.add(workflow.path)
@@ -553,6 +601,13 @@ class ActionsUpdater:
             self.git.bot_patches(starting_point, export_patches)
 
         return workflows, all_updates
+
+    # temporary actionlint hack
+    def _parse_for_actionlint_pin(self, /, workflow: Workflow) -> ActionPin | None:
+        mobj = ACTIONLINT_RE.search(workflow.text)
+        if not mobj:
+            return None
+        return ActionPin(ACTIONLINT_ACTION, sha=mobj.group('sha'), tag=mobj.group('tag'))
 
     def parse_results(
         self,
