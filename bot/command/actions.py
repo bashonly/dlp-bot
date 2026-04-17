@@ -151,11 +151,7 @@ def configure_parser(parser: argparse.ArgumentParser):
     parser.add_argument(
         '--git-protocol',
         choices=['ssh', 'https'],
-        default=os.getenv('DLPBOT_GIT_PROTOCOL'),
-        help=(
-            'protocol to use with git. if not provided, the value of the DLPBOT_GIT_PROTOCOL '
-            'environment variable will be used if set, or else the default is "ssh"'
-        ),
+        help=('protocol to use with git. one of "ssh" (default) or "https"'),
     )
     parser.add_argument(
         '--commit-type',
