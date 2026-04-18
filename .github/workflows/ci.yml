@@ -39,14 +39,20 @@ jobs:
           sudo apt -y install shellcheck
           python -m pip install -U --require-hashes -r "requirements/pip.txt"
           python -m pip install -U --require-hashes -r "requirements/pyflakes.txt"
-          curl -LO "${ACTIONLINT_REPO}/releases/download/v${ACTIONLINT_VERSION}/${ACTIONLINT_TARBALL}"
+          gh release download \
+            --repo rhysd/actionlint \
+            --pattern "${ACTIONLINT_TARBALL}" \
+            "v${ACTIONLINT_VERSION}"
+          gh attestation verify \
+            --repo rhysd/actionlint \
+            "${ACTIONLINT_TARBALL}"
           printf '%s  %s' "${ACTIONLINT_SHA256SUM}" "${ACTIONLINT_TARBALL}" | sha256sum -c -
           tar xvzf "${ACTIONLINT_TARBALL}" actionlint
-          chmod +x actionlint
+          sudo install -D --mode=755 actionlint /usr/bin/
 
       - name: Run actionlint
         run: |
-          ./actionlint -color
+          actionlint -color
 
   zizmor:
     name: zizmor
