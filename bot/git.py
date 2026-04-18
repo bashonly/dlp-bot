@@ -301,12 +301,10 @@ class Git:
     ) -> list[str]:
         git_args = ['--keep-subject']
         if output_dir:
-            git_args.extend(
-                [
-                    '--output-directory',
-                    str(pathlib.Path(output_dir).resolve()),
-                ]
-            )
+            git_args.extend([
+                '--output-directory',
+                str(pathlib.Path(output_dir).resolve()),
+            ])
 
         return self.format_patch(*git_args, since_or_range)
 

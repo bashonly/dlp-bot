@@ -179,14 +179,12 @@ class GitHubAPICaller(GitHubBaseCaller):
 
     @property
     def headers(self) -> dict[str, str]:
-        return filter_dict(
-            {
-                **super().headers,
-                'Accept': 'application/vnd.github+json',
-                'Authorization': f'Bearer {self._github_token}' if self._github_token else None,
-                'X-GitHub-Api-Version': '2026-03-10',
-            }
-        )
+        return filter_dict({
+            **super().headers,
+            'Accept': 'application/vnd.github+json',
+            'Authorization': f'Bearer {self._github_token}' if self._github_token else None,
+            'X-GitHub-Api-Version': '2026-03-10',
+        })
 
     def call(
         self,
@@ -204,13 +202,11 @@ class GitHubAPICaller(GitHubBaseCaller):
             path,
             query=query,
             data=json.dumps(body, separators=(',', ':')).encode() if body else None,
-            headers=filter_dict(
-                {
-                    **self.headers,
-                    'Content-Type': 'application/json' if body else None,
-                    **(headers or {}),
-                }
-            ),
+            headers=filter_dict({
+                **self.headers,
+                'Content-Type': 'application/json' if body else None,
+                **(headers or {}),
+            }),
             method=method,
             status_check=status_check,
         )
@@ -328,13 +324,11 @@ class GitHubAPICaller(GitHubBaseCaller):
         """
         return self.call(
             f'/repos/{owner}/{repo}/forks',
-            body=filter_dict(
-                {
-                    'organization': organization,
-                    'name': name,
-                    'default_branch_only': default_branch_only,
-                }
-            ),
+            body=filter_dict({
+                'organization': organization,
+                'name': name,
+                'default_branch_only': default_branch_only,
+            }),
             method='POST',
         )
 
@@ -425,18 +419,16 @@ class GitHubAPICaller(GitHubBaseCaller):
         """
         return self.call(
             f'/repos/{owner}/{repo}/releases',
-            body=filter_dict(
-                {
-                    'tag_name': tag_name,
-                    'target_commitish': target_commitish,
-                    'name': name,
-                    'body': body,
-                    'draft': draft,
-                    'prerelease': prerelease,
-                    'generate_release_notes': generate_release_notes,
-                    'make_latest': make_latest,
-                }
-            ),
+            body=filter_dict({
+                'tag_name': tag_name,
+                'target_commitish': target_commitish,
+                'name': name,
+                'body': body,
+                'draft': draft,
+                'prerelease': prerelease,
+                'generate_release_notes': generate_release_notes,
+                'make_latest': make_latest,
+            }),
             method='POST',
         )
 
@@ -476,17 +468,15 @@ class GitHubAPICaller(GitHubBaseCaller):
 
         return self.call(
             f'/repos/{owner}/{repo}/pulls',
-            body=filter_dict(
-                {
-                    'title': title,
-                    'body': body,
-                    'head': head,
-                    'head_repo': head_repo,
-                    'base': base,
-                    'maintainer_can_modify': maintainer_can_modify,
-                    'draft': draft,
-                }
-            ),
+            body=filter_dict({
+                'title': title,
+                'body': body,
+                'head': head,
+                'head_repo': head_repo,
+                'base': base,
+                'maintainer_can_modify': maintainer_can_modify,
+                'draft': draft,
+            }),
             method='POST',
         )
 
@@ -519,15 +509,13 @@ class GitHubAPICaller(GitHubBaseCaller):
         """
         return self.call(
             f'/repos/{owner}/{repo}/pulls/{pull_number}',
-            body=filter_dict(
-                {
-                    'title': title,
-                    'body': body,
-                    'state': state,
-                    'base': base,
-                    'maintainer_can_modify': maintainer_can_modify,
-                }
-            ),
+            body=filter_dict({
+                'title': title,
+                'body': body,
+                'state': state,
+                'base': base,
+                'maintainer_can_modify': maintainer_can_modify,
+            }),
             method='PATCH',
         )
 
@@ -634,14 +622,12 @@ class GitHubAPICaller(GitHubBaseCaller):
 
         return self.call(
             f'/repos/{owner}/{repo}/pulls/{pull_number}/merge',
-            body=filter_dict(
-                {
-                    'commit_title': commit_title,
-                    'commit_message': commit_message,
-                    'sha': sha,
-                    'merge_method': merge_method,
-                }
-            ),
+            body=filter_dict({
+                'commit_title': commit_title,
+                'commit_message': commit_message,
+                'sha': sha,
+                'merge_method': merge_method,
+            }),
             method='PUT',
         )
 
@@ -778,13 +764,11 @@ class GitHubAPICaller(GitHubBaseCaller):
         """
         return self.call(
             f'/repos/{owner}/{repo}/merges',
-            body=filter_dict(
-                {
-                    'base': base,
-                    'head': head,
-                    'commit_message': commit_message,
-                }
-            ),
+            body=filter_dict({
+                'base': base,
+                'head': head,
+                'commit_message': commit_message,
+            }),
             method='POST',
         )
 

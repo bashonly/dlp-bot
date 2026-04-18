@@ -31,23 +31,21 @@ def uv_export(name: str):
 
     output_path = BASE_PATH / f'requirements/{name}.txt'
 
-    return subprocess.check_call(
-        [
-            'uv',
-            'export',
-            '--no-python-downloads',
-            '--quiet',
-            '--no-progress',
-            '--color=never',
-            '--format=requirements.txt',
-            '--frozen',
-            '--refresh',
-            '--no-emit-project',
-            '--no-default-groups',
-            argument,
-            f'--output-file={output_path.relative_to(BASE_PATH)}',
-        ]
-    )
+    return subprocess.check_call([
+        'uv',
+        'export',
+        '--no-python-downloads',
+        '--quiet',
+        '--no-progress',
+        '--color=never',
+        '--format=requirements.txt',
+        '--frozen',
+        '--refresh',
+        '--no-emit-project',
+        '--no-default-groups',
+        argument,
+        f'--output-file={output_path.relative_to(BASE_PATH)}',
+    ])
 
 
 def uv_lock_upgrade():

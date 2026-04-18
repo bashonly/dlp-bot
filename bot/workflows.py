@@ -100,15 +100,13 @@ def get_tag_from_comment(action: Action, sha: str, workflow_text: str) -> str:
 
 
 def make_pull_request_description(workflows: list[Workflow], all_updates: Updates) -> str:
-    return '\n'.join(
-        (
-            '<!-- BEGIN dlp-bot generated section -->\n',
-            *generate_actions_report(all_updates),
-            '',
-            *generate_workflows_report(workflows),
-            '\n<!-- END dlp-bot generated section -->\n\n',
-        )
-    )
+    return '\n'.join((
+        '<!-- BEGIN dlp-bot generated section -->\n',
+        *generate_actions_report(all_updates),
+        '',
+        *generate_workflows_report(workflows),
+        '\n<!-- END dlp-bot generated section -->\n\n',
+    ))
 
 
 def make_bulk_commit_message(
@@ -118,13 +116,11 @@ def make_bulk_commit_message(
     prefix: str | None = None,
     addendum: str | None = None,
 ) -> str:
-    return '\n\n'.join(
-        (
-            make_bulk_commit_title(workflows, all_updates, prefix=prefix),
-            make_bulk_commit_body(all_updates),
-            f'{addendum or ""}\n',
-        )
-    )
+    return '\n\n'.join((
+        make_bulk_commit_title(workflows, all_updates, prefix=prefix),
+        make_bulk_commit_body(all_updates),
+        f'{addendum or ""}\n',
+    ))
 
 
 def make_bulk_commit_title(
@@ -135,15 +131,13 @@ def make_bulk_commit_title(
 ) -> str:
     workflows_count = len([workflow for workflow in workflows if workflow.updated_actions])
     actions_count = len(all_updates)
-    return ''.join(
-        (
-            prefix or '',
-            f'Update {actions_count} action',
-            's' if actions_count > 1 else '',
-            f' in {workflows_count} workflow',
-            's' if workflows_count > 1 else '',
-        )
-    )
+    return ''.join((
+        prefix or '',
+        f'Update {actions_count} action',
+        's' if actions_count > 1 else '',
+        f' in {workflows_count} workflow',
+        's' if workflows_count > 1 else '',
+    ))
 
 
 def make_bulk_commit_body(all_updates: Updates) -> str:
@@ -158,12 +152,10 @@ def make_incremental_commit_message(
     prefix: str | None = None,
     addendum: str | None = None,
 ) -> str:
-    return '\n\n'.join(
-        (
-            make_commit_line(action, old, new, prefix=prefix or ''),
-            f'{addendum or ""}\n',
-        )
-    )
+    return '\n\n'.join((
+        make_commit_line(action, old, new, prefix=prefix or ''),
+        f'{addendum or ""}\n',
+    ))
 
 
 def make_commit_line(action: Action, old: ActionPin, new: ActionPin, *, prefix: str = '* ') -> str:
@@ -204,14 +196,12 @@ def generate_actions_report(all_updates: Updates) -> collections.abc.Iterator[st
         md_new = ('v' if new.tag.startswith('v') else '') + md_new.lstrip('.')
         github_url = f'https://github.com/{action}'
 
-        yield ' | '.join(
-            (
-                f'[**`{action}`**](<{github_url}>)',
-                f'[{md_old}](<{github_url}/releases/tag/{old.tag}>)',
-                f'[{md_new}](<{github_url}/releases/tag/{new.tag}>)',
-                f'[`{old.sha[:7]}...{new.sha[:7]}`](<{github_url}/compare/{old.sha}...{new.sha}>)',
-            )
-        )
+        yield ' | '.join((
+            f'[**`{action}`**](<{github_url}>)',
+            f'[{md_old}](<{github_url}/releases/tag/{old.tag}>)',
+            f'[{md_new}](<{github_url}/releases/tag/{new.tag}>)',
+            f'[`{old.sha[:7]}...{new.sha[:7]}`](<{github_url}/compare/{old.sha}...{new.sha}>)',
+        ))
 
 
 class Workflow:
