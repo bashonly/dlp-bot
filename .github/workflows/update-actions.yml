@@ -31,7 +31,7 @@ jobs:
 
       - name: Output variables
         id: variables
-        run: python .github/scripts/output_variables.py
+        run: python .github/scripts/output_variables.py actions
 
   update_actions:
     name: Update actions (${{ matrix.repo }})
