@@ -33,6 +33,7 @@ jobs:
 
       - name: Install requirements
         env:
+          GH_TOKEN: ${{ github.token }}
           ACTIONLINT_TARBALL: ${{ format('actionlint_{0}_linux_amd64.tar.gz', env.ACTIONLINT_VERSION) }}
         shell: bash
         run: |
