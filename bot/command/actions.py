@@ -14,8 +14,10 @@ import sys
 import tempfile
 
 from bot.git import Git, GitError
-from bot.github import GitHubPullRequest
+from bot.github import GitHubPullRequest, RelativeBranch
 from bot.knowledge import (
+    DEFAULT_HEAD_BRANCHES,
+    DEFAULT_HEAD_OWNER,
     PULL_REQUEST_TEMPLATES,
     SERVICED_REPOS,
 )
@@ -36,9 +38,7 @@ except ImportError:
 
 GIT_FORGE = 'github'
 
-DEFAULT_HEAD_OWNER = 'dlp-bot'
-DEFAULT_HEAD_BRANCH = 'bot/update-actions'
-DEFAULT_HEAD_LABEL = f'{DEFAULT_HEAD_OWNER}:{DEFAULT_HEAD_BRANCH}'
+DEFAULT_HEAD = RelativeBranch(owner=DEFAULT_HEAD_OWNER, branch=DEFAULT_HEAD_BRANCHES['actions'])
 
 
 def configure_parser(parser: argparse.ArgumentParser):
@@ -76,12 +76,12 @@ def configure_parser(parser: argparse.ArgumentParser):
         '-H',
         '--head',
         dest='head_label',
-        default=DEFAULT_HEAD_LABEL,
+        default=DEFAULT_HEAD.label,
         metavar='OWNER[:REPO]:BRANCH',
         help=(
             'label for the branch that the pull request should be created from, '
             'formatted as {owner}[:{repo}]{branch}. if not provided, it will default to '
-            f'{DEFAULT_HEAD_LABEL}'
+            f'{DEFAULT_HEAD}'
         ),
     )
     parser.add_argument(

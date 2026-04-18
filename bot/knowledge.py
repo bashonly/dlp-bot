@@ -2,6 +2,12 @@ from __future__ import annotations
 
 import typing
 
+DEFAULT_HEAD_OWNER = 'dlp-bot'
+
+DEFAULT_HEAD_BRANCHES = {
+    'actions': 'bot/update-actions',
+}
+
 SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
     'yt-dlp': {
         'forge': 'github',
