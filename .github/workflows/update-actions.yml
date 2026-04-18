@@ -13,7 +13,7 @@ concurrency:
 jobs:
   output_variables:
     name: Output variables
-    if: github.event_name != 'schedule' || !github.event.repository.fork
+    if: github.event_name != 'schedule' || vars.DAILY_UPDATE_ACTIONS
     runs-on: ubuntu-latest
     outputs:
       default_head_branch: ${{ steps.variables.outputs.default_head_branch }}
