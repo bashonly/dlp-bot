@@ -6,6 +6,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: update-actions
+  cancel-in-progress: false
+
 jobs:
   output_variables:
     name: Output variables
