@@ -14,7 +14,7 @@ concurrency:
 env:
   ACTIONLINT_VERSION: "1.7.12"
   ACTIONLINT_SHA256SUM: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
-  ACTIONLINT_REPO: https://github.com/rhysd/actionlint
+  ACTIONLINT_REPO: rhysd/actionlint
 
 jobs:
   actionlint:
@@ -41,11 +41,11 @@ jobs:
           python -m pip install -U --require-hashes -r "requirements/pip.txt"
           python -m pip install -U --require-hashes -r "requirements/pyflakes.txt"
           gh release download \
-            --repo rhysd/actionlint \
+            --repo "${ACTIONLINT_REPO}" \
             --pattern "${ACTIONLINT_TARBALL}" \
             "v${ACTIONLINT_VERSION}"
           gh attestation verify \
-            --repo rhysd/actionlint \
+            --repo "${ACTIONLINT_REPO}" \
             "${ACTIONLINT_TARBALL}"
           printf '%s  %s' "${ACTIONLINT_SHA256SUM}" "${ACTIONLINT_TARBALL}" | sha256sum -c -
           tar xvzf "${ACTIONLINT_TARBALL}" actionlint
