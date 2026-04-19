@@ -25,6 +25,8 @@ class GitHubError(BotError):
 
 @dataclasses.dataclass(frozen=True)
 class BaseBranch:
+    __slots__ = ()
+
     def __new__(cls, *args, **kwargs):
         if cls == BaseBranch:
             raise TypeError('cannot instantiate base class')
