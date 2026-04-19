@@ -4,6 +4,7 @@ import collections.abc
 import contextlib
 import datetime as dt
 import re
+import string
 import typing
 import urllib.request
 
@@ -41,16 +42,6 @@ def filter_dict(
     cndn: collections.abc.Callable = lambda _, v: v is not None,
 ):
     return {k: v for k, v in dct.items() if cndn(k, v)}
-
-
-def safe_format(s: str | None, **kwargs) -> str | None:
-    if not s or not isinstance(s, str):
-        return None
-
-    try:
-        return s.format(**kwargs)
-    except KeyError:
-        return s
 
 
 def remove_around(data: str, before: str, after: str) -> str:
@@ -112,3 +103,42 @@ def table_a_raza(header: tuple[str, ...], rows: list[tuple[str, ...]]) -> collec
     yield '-|-'.join(''.ljust(width, '-') for width in widths)
     for row in rows:
         yield ' | '.join(col.ljust(width) for width, col in zip(widths, row, strict=True))
+
+
+class SafeFormatDict(dict):
+    def __missing__(self, key):
+        return f'{{{key}}}'
+
+
+class SafeFormatAutomaticTuple(tuple):
+    def __getitem__(self, subscript):
+        try:
+            return super().__getitem__(subscript)
+        except IndexError:
+            return '{}'
+
+
+class SafeFormatManualTuple(tuple):
+    def __getitem__(self, subscript):
+        try:
+            return super().__getitem__(subscript)
+        except IndexError:
+            return f'{{{subscript}}}'
+
+
+def safe_format(s: str | None, /, *args, **kwargs) -> str | None:
+    if not isinstance(s, str):
+        return None
+
+    formatter = string.Formatter()
+
+    safe_args: tuple
+    if '{}' in s and any(tup[1] == '' for tup in formatter.parse(s)):
+        safe_args = SafeFormatAutomaticTuple(args)
+    else:
+        safe_args = SafeFormatManualTuple(args)
+
+    try:
+        return formatter.vformat(s, safe_args, SafeFormatDict(kwargs))
+    except (TypeError, ValueError):
+        return s
