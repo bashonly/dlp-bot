@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Create a pull request on an upstream GitHub repository.
+Create (or update) a pull request on an upstream GitHub repository.
 
 All changes are expected to be already committed and pushed to the remote head branch.
 """

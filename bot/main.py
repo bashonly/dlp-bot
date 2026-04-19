@@ -3,12 +3,20 @@ from __future__ import annotations
 import argparse
 import sys
 import types
+import typing
 
-import bot.command.actions
 import bot.command.pr
+import bot.command.pr.create
+import bot.command.update
+import bot.command.update.actions
+import bot.command.update.deps
 
 
-def get_doc(module: types.ModuleType):
+def subcommand_name(module: types.ModuleType) -> str:
+    return module.__name__.rpartition('.')[2].replace('_', '-')
+
+
+def get_doc(module: types.ModuleType) -> tuple[str | None, str | None]:
     doc = module.__doc__
     if not doc:
         return None, None
@@ -21,33 +29,75 @@ def get_doc(module: types.ModuleType):
     return None, None
 
 
-def _main():
-    parser = argparse.ArgumentParser(
-        prog='dlp-bot',
-        description='automated tools for the dlp org',
-        # suggest_on_error=True,  # Python>=3.14
-    )
-    subparsers = parser.add_subparsers(
-        title='subcommands',
-        dest='action',
+def _add_intermediate_subcmd(
+    module: types.ModuleType,
+    parent_parsers_map: dict[str, typing.Any],
+    parent_subparsers: argparse._SubParsersAction,
+) -> tuple[dict, argparse._SubParsersAction]:
+    """Configures the intermediate subcommand parser and mutates the parsers map.
+
+    Returns its nested map within the parsers map and the intermediate parser's subparsers.
+    """
+    name = subcommand_name(module)
+    help_line, description = get_doc(module)
+    intermediate_parser = parent_subparsers.add_parser(name, help=help_line, description=description)
+    nested_map = parent_parsers_map[name] = {}
+
+    return nested_map, intermediate_parser.add_subparsers(
+        title=f'{name} subcommands',
+        dest=f'_{name}_subcommand',
         required=True,
         metavar='<subcommand>',
     )
 
-    parsers = {}
 
-    def _add_parser(module: types.ModuleType):
-        name = module.__name__.rpartition('.')[2].replace('_', '-')
-        help_line, description = get_doc(module)
-        parser = subparsers.add_parser(name, help=help_line, description=description)
-        module.configure_parser(parser)
-        parsers[name] = module.run
+def _add_final_subcmd(
+    module: types.ModuleType,
+    parent_parsers_map: dict[str, types.FunctionType],
+    parent_subparsers: argparse._SubParsersAction,
+):
+    """Configures the final subcommand parser and mutates the parsers map.
 
-    _add_parser(bot.command.actions)
-    _add_parser(bot.command.pr)
+    e.g. for a non-nested final subcmd, pass (m, parsers_map, root_subparsers)
+         but for a nested final subcmd, pass (m, parsers_map[parent_subcmd], parent_subparsers)
+    """
+    name = subcommand_name(module)
+    help_line, description = get_doc(module)
+    final_parser = parent_subparsers.add_parser(name, help=help_line, description=description)
+    module.configure_parser(final_parser)
+    parent_parsers_map[name] = module.run
 
-    args = parser.parse_args()
-    return parsers[args.action](args)
+
+def _main():
+    root_parser = argparse.ArgumentParser(
+        prog='dlp-bot',
+        description='automated tools for the dlp org',
+        # suggest_on_error=True,  # Python>=3.14
+    )
+    root_subparsers = root_parser.add_subparsers(
+        title='subcommands',
+        dest='_root_subcommand',
+        required=True,
+        metavar='<subcommand>',
+    )
+    parsers_map = {}
+
+    nested_map, nested_subparsers = _add_intermediate_subcmd(bot.command.pr, parsers_map, root_subparsers)
+    _add_final_subcmd(bot.command.pr.create, nested_map, nested_subparsers)
+
+    nested_map, nested_subparsers = _add_intermediate_subcmd(bot.command.update, parsers_map, root_subparsers)
+    _add_final_subcmd(bot.command.update.actions, nested_map, nested_subparsers)
+    _add_final_subcmd(bot.command.update.deps, nested_map, nested_subparsers)
+
+    args = root_parser.parse_args()
+    key = 'root'
+    result = parsers_map
+
+    while not callable(result):
+        key = getattr(args, f'_{key}_subcommand')
+        result = result[key]
+
+    return result(args)
 
 
 def main():
