@@ -2,6 +2,14 @@ __pycache__
 *.pyc
 .*_cache
 
-/dist
+/.venv
+/venv
 
-*.env
+/artifacts
+/dist
+/patches
+
+.env
+.env.*
+
+Makefile
