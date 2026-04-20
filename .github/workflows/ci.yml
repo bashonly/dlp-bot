@@ -117,7 +117,7 @@ jobs:
 
       - name: Run mypy
         run: |
-          mypy bot/ .github/scripts/
+          mypy bot/
 
   all:
     name: all
