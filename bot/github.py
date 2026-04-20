@@ -7,6 +7,7 @@ import json
 import pathlib
 import sys
 import time
+import types
 import typing
 import urllib.error
 import urllib.parse
@@ -216,11 +217,17 @@ class GitHubAPICaller(GitHubBaseCaller):
     def paginator(
         self,
         /,
-        func: collections.abc.Callable,
+        func: types.MethodType,
         *args: str,
-        searches: list[dict[str, str | bool | int | float]] | None = None,
+        searches: list[dict[str, str | bool | int | float | list]] | None = None,
         **kwargs: str | bool | None,
     ) -> collections.abc.Iterator[dict[str, typing.Any]]:
+        """Yield pages from any GithubAPICaller.list_* method
+
+        `searches` is a list of dicts with key/value pairs to filter the results by.
+        The generator will yield matches until all searches are found or result pages are exhausted.
+        If a `searches` dict value is a list, it works like a logical OR for its contained values.
+        """
         func_name = func.__name__
         assert func_name.startswith('list_'), f'{func_name} does not return a list'
         assert hasattr(func, '__self__'), f'{func_name} is not an instance method'
@@ -232,14 +239,17 @@ class GitHubAPICaller(GitHubBaseCaller):
             requirements = []
 
         def filter_func(
-            filter_dict: dict[str, str | bool | int | float],
+            filter_pairs: dict[str, str | bool | int | float | list],
         ) -> collections.abc.Callable[[dict[str, typing.Any]], bool]:
             def inner_func(
                 input_dict: dict[str, typing.Any],
             ) -> bool:
-                if all(input_dict.get(k) == v for k, v in filter_dict.items()):
-                    if filter_dict in requirements:
-                        requirements.remove(filter_dict)
+                if all(
+                    input_dict.get(k) in v if isinstance(v, list) else input_dict.get(k) == v
+                    for k, v in filter_pairs.items()
+                ):
+                    if filter_pairs in requirements:
+                        requirements.remove(filter_pairs)
                     return True
                 return False
 
