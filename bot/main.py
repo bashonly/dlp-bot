@@ -9,7 +9,7 @@ import bot.command.pr
 import bot.command.pr.create
 import bot.command.update
 import bot.command.update.actions
-import bot.command.update.deps
+import bot.command.update.dependencies
 
 
 def subcommand_name(module: types.ModuleType) -> str:
@@ -33,6 +33,9 @@ def _add_intermediate_subcmd(
     module: types.ModuleType,
     parent_parsers_map: dict[str, typing.Any],
     parent_subparsers: argparse._SubParsersAction,
+    *,
+    aliases: list[str] | None = None,
+    deprecated: bool = False,
 ) -> tuple[dict, argparse._SubParsersAction]:
     """Configures the intermediate subcommand parser and mutates the parsers map.
 
@@ -40,8 +43,17 @@ def _add_intermediate_subcmd(
     """
     name = subcommand_name(module)
     help_line, description = get_doc(module)
-    intermediate_parser = parent_subparsers.add_parser(name, help=help_line, description=description)
-    nested_map = parent_parsers_map[name] = {}
+    aliases = aliases or []
+    intermediate_parser = parent_subparsers.add_parser(
+        name,
+        aliases=aliases,
+        help=help_line,
+        description=description,
+        deprecated=deprecated,
+    )
+    nested_map: dict[str, typing.Any] = {}
+    for key in (name, *aliases):
+        parent_parsers_map[key] = nested_map
 
     return nested_map, intermediate_parser.add_subparsers(
         title=f'{name} subcommands',
@@ -55,6 +67,9 @@ def _add_final_subcmd(
     module: types.ModuleType,
     parent_parsers_map: dict[str, types.FunctionType],
     parent_subparsers: argparse._SubParsersAction,
+    *,
+    aliases: list[str] | None = None,
+    deprecated: bool = False,
 ):
     """Configures the final subcommand parser and mutates the parsers map.
 
@@ -63,9 +78,17 @@ def _add_final_subcmd(
     """
     name = subcommand_name(module)
     help_line, description = get_doc(module)
-    final_parser = parent_subparsers.add_parser(name, help=help_line, description=description)
+    aliases = aliases or []
+    final_parser = parent_subparsers.add_parser(
+        name,
+        aliases=aliases,
+        help=help_line,
+        description=description,
+        deprecated=deprecated,
+    )
     module.configure_parser(final_parser)
-    parent_parsers_map[name] = module.run
+    for key in (name, *aliases):
+        parent_parsers_map[key] = module.run
 
 
 def _main():
@@ -86,8 +109,8 @@ def _main():
     _add_final_subcmd(bot.command.pr.create, nested_map, nested_subparsers)
 
     nested_map, nested_subparsers = _add_intermediate_subcmd(bot.command.update, parsers_map, root_subparsers)
-    _add_final_subcmd(bot.command.update.actions, nested_map, nested_subparsers)
-    _add_final_subcmd(bot.command.update.deps, nested_map, nested_subparsers)
+    _add_final_subcmd(bot.command.update.actions, nested_map, nested_subparsers, aliases=['workflows'])
+    _add_final_subcmd(bot.command.update.dependencies, nested_map, nested_subparsers, aliases=['deps'])
 
     args = root_parser.parse_args()
     key = 'root'
