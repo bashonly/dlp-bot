@@ -6,6 +6,7 @@ DEFAULT_HEAD_OWNER = 'dlp-bot'
 
 DEFAULT_HEAD_BRANCHES = {
     'actions': 'bot/update-actions',
+    'dependencies': 'bot/update-dependencies',
 }
 
 SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
@@ -16,7 +17,7 @@ SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
         'default_branch': 'master',
         'commit_prefix': '[ci] ',
         'commit_addendum': 'Authored by: {username}',
-        'services': ['actions'],
+        'services': ['actions', 'dependencies'],
     },
     'ejs': {
         'forge': 'github',
@@ -25,7 +26,7 @@ SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
         'default_branch': 'main',
         'commit_prefix': None,
         'commit_addendum': None,
-        'services': ['actions'],
+        'services': ['actions', 'dependencies'],
     },
     'protobug': {
         'forge': 'github',
@@ -61,9 +62,12 @@ SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
         'default_branch': 'main',
         'commit_prefix': None,
         'commit_addendum': None,
-        'services': [],  # actions
+        # TODO: add these services once dlp-bot repo exists in the org: 'actions', 'dependencies'
+        'services': [],
     },
 }
+
+GIT_FORGE = 'github'
 
 GIT_FORGES: dict[str, dict[str, dict[str, str]]] = {
     'github': {

@@ -18,6 +18,7 @@ from bot.github import GitHubPullRequest, RelativeBranch
 from bot.knowledge import (
     DEFAULT_HEAD_BRANCHES,
     DEFAULT_HEAD_OWNER,
+    GIT_FORGE,
     PULL_REQUEST_TEMPLATES,
     SERVICED_REPOS,
 )
@@ -36,17 +37,19 @@ except ImportError:
     yaml = None
 
 
-GIT_FORGE = 'github'
+UPDATE_NAME = 'actions'
 
-DEFAULT_HEAD = RelativeBranch(owner=DEFAULT_HEAD_OWNER, branch=DEFAULT_HEAD_BRANCHES['actions'])
+DEFAULT_HEAD = RelativeBranch(owner=DEFAULT_HEAD_OWNER, branch=DEFAULT_HEAD_BRANCHES[UPDATE_NAME])
+
+SUPPORTED_REPOS = [k for k, v in SERVICED_REPOS.items() if UPDATE_NAME in v['services']]
 
 
 def configure_parser(parser: argparse.ArgumentParser):
     parser.add_argument(
         'repository',
         metavar='REPOSITORY',
-        choices=list(SERVICED_REPOS),
-        help=f'name of the (upstream) repository. one of: {", ".join(SERVICED_REPOS)}',
+        choices=SUPPORTED_REPOS,
+        help=f'name of the (upstream) repository. one of: {", ".join(SUPPORTED_REPOS)}',
     )
     # NB: Do not use type=pathlib.Path in arg parser since it would convert empty arg to Path('.')
     parser.add_argument(
@@ -216,7 +219,7 @@ def _real_run(args: argparse.Namespace):
     else:
         repo_dir = pathlib.Path(args.directory).resolve()
 
-    repo_info = SERVICED_REPOS[args.repository]
+    repo_info = SUPPORTED_REPOS[args.repository]
     pr = GitHubPullRequest.from_branches(
         repo=args.repository,
         base=args.base_label or ':'.join((repo_info['owner'], repo_info['default_branch'])),

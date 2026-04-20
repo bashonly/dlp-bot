@@ -14,13 +14,19 @@ import sys
 from bot.knowledge import SERVICED_REPOS
 from bot.utils import BotError, SuccessMessage
 
+UPDATE_NAME = 'dependencies'
+
+# DEFAULT_HEAD = RelativeBranch(owner=DEFAULT_HEAD_OWNER, branch=DEFAULT_HEAD_BRANCHES[UPDATE_NAME])
+
+SUPPORTED_REPOS = [k for k, v in SERVICED_REPOS.items() if UPDATE_NAME in v['services']]
+
 
 def configure_parser(parser: argparse.ArgumentParser):
     parser.add_argument(
         'repository',
         metavar='REPOSITORY',
-        choices=list(SERVICED_REPOS),
-        help=f'name of the (upstream) repository. one of: {", ".join(SERVICED_REPOS)}',
+        choices=SUPPORTED_REPOS,
+        help=f'name of the (upstream) repository. one of: {", ".join(SUPPORTED_REPOS)}',
     )
     parser.add_argument(
         '-H',
