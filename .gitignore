@@ -9,7 +9,8 @@ __pycache__
 /dist
 /patches
 
-.env
-.env.*
-
-Makefile
+# local development helpers
+/.env
+/.env.*
+/Makefile
+/_*.py
