@@ -7,6 +7,8 @@ import typing
 
 import bot.command.pr
 import bot.command.pr.create
+import bot.command.tools
+import bot.command.tools.variables
 import bot.command.update
 import bot.command.update.actions
 import bot.command.update.dependencies
@@ -111,6 +113,9 @@ def _main():
     nested_map, nested_subparsers = _add_intermediate_subcmd(bot.command.update, parsers_map, root_subparsers)
     _add_final_subcmd(bot.command.update.actions, nested_map, nested_subparsers, aliases=['workflows'])
     _add_final_subcmd(bot.command.update.dependencies, nested_map, nested_subparsers, aliases=['deps'])
+
+    nested_map, nested_subparsers = _add_intermediate_subcmd(bot.command.tools, parsers_map, root_subparsers)
+    _add_final_subcmd(bot.command.tools.variables, nested_map, nested_subparsers)
 
     args = root_parser.parse_args()
     key = 'root'

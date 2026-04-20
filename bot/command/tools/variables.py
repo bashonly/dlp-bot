@@ -1,12 +1,14 @@
+#!/usr/bin/env python
+"""
+Output variables needed for GitHub Actions workflows.
+"""
+
 from __future__ import annotations
 
 import argparse
 import json
 import os
-import pathlib
 import sys
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent.parent))
 
 from bot.knowledge import (
     DEFAULT_HEAD_BRANCHES,
@@ -15,17 +17,18 @@ from bot.knowledge import (
 )
 
 
-def main():
-    parser = argparse.ArgumentParser(description='this script is intended to be run in a GitHub Actions environment')
+def configure_parser(parser: argparse.ArgumentParser):
     parser.add_argument(
         'service',
-        choices=['actions'],
-        help='output the variables for this service',
+        choices=list(DEFAULT_HEAD_BRANCHES),
+        help='the service for which to output variables',
     )
-    service = parser.parse_args().service
+
+
+def run(args: argparse.Namespace) -> int:
     in_gha = os.getenv('GITHUB_ACTIONS')
-    default_head_branch = DEFAULT_HEAD_BRANCHES[service]
-    matrix = [v for v in SERVICED_REPOS.values() if service in v['services']]
+    default_head_branch = DEFAULT_HEAD_BRANCHES[args.service]
+    matrix = [v for v in SERVICED_REPOS.values() if args.service in v['services']]
 
     if in_gha:
         print('::group::Output variables')
@@ -54,4 +57,10 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        parser = argparse.ArgumentParser()
+        configure_parser(parser)
+        sys.exit(run(parser.parse_args()))
+    except KeyboardInterrupt:
+        print('\nERROR: interrupted by user', file=sys.stderr)
+        sys.exit(1)
