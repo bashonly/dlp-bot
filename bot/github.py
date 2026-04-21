@@ -5,6 +5,7 @@ import dataclasses
 import itertools
 import json
 import pathlib
+import re
 import sys
 import time
 import types
@@ -18,6 +19,8 @@ from bot.utils import (
     filter_dict,
     request,
 )
+
+GITHUB_URL_RE = re.compile(r'https://github\.com/(?P<owner>[0-9a-zA-Z_-]+)/(?P<repo>[0-9a-zA-Z_-]+)')
 
 
 class GitHubError(BotError):
