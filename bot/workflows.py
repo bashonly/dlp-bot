@@ -15,7 +15,11 @@ from bot.github import (
     GitHubPullRequest,
     GitHubWebFetcher,
 )
-from bot.knowledge import ACTIONS
+from bot.knowledge import (
+    ACTIONS,
+    BOT_BEGIN_HTML_TAG,
+    BOT_END_HTML_TAG,
+)
 from bot.utils import (
     SHA_PATTERN,
     BotError,
@@ -66,7 +70,7 @@ class ActionPin:
     tag: str
 
 
-type Updates = dict[Action, tuple[ActionPin, ActionPin]]
+type ActionsUpdateResult = dict[Action, tuple[ActionPin, ActionPin]]
 
 ACTIONLINT_ACTION = Action(owner='rhysd', repo='actionlint', default_branch='main')
 ACTIONLINT_ASSET_TMPL = 'actionlint_{version}_linux_amd64.tar.gz'
@@ -99,19 +103,19 @@ def get_tag_from_comment(action: Action, sha: str, workflow_text: str) -> str:
     return mobj.group('tag')
 
 
-def make_pull_request_description(workflows: list[Workflow], all_updates: Updates) -> str:
+def make_pull_request_description(workflows: list[Workflow], all_updates: ActionsUpdateResult) -> str:
     return '\n'.join((
-        '<!-- BEGIN dlp-bot generated section -->\n',
+        f'{BOT_BEGIN_HTML_TAG}\n',
         *generate_actions_report(all_updates),
         '',
         *generate_workflows_report(workflows),
-        '\n<!-- END dlp-bot generated section -->\n\n',
+        f'\n{BOT_END_HTML_TAG}\n\n',
     ))
 
 
 def make_bulk_commit_message(
     workflows: list[Workflow],
-    all_updates: Updates,
+    all_updates: ActionsUpdateResult,
     *,
     prefix: str | None = None,
     addendum: str | None = None,
@@ -125,7 +129,7 @@ def make_bulk_commit_message(
 
 def make_bulk_commit_title(
     workflows: list[Workflow],
-    all_updates: Updates,
+    all_updates: ActionsUpdateResult,
     *,
     prefix: str | None = None,
 ) -> str:
@@ -140,7 +144,7 @@ def make_bulk_commit_title(
     ))
 
 
-def make_bulk_commit_body(all_updates: Updates) -> str:
+def make_bulk_commit_body(all_updates: ActionsUpdateResult) -> str:
     return '\n'.join(sorted(make_commit_line(action, old, new) for action, (old, new) in all_updates.items()))
 
 
@@ -172,7 +176,7 @@ def generate_workflows_report(workflows: list[Workflow]) -> collections.abc.Iter
         yield f'**`{workflow}`** | {updates}'
 
 
-def generate_actions_report(all_updates: Updates) -> collections.abc.Iterator[str]:
+def generate_actions_report(all_updates: ActionsUpdateResult) -> collections.abc.Iterator[str]:
     yield 'action | old | new | diff'
     yield '-------|-----|-----|-----'
     for action, (old, new) in sorted(all_updates.items()):
@@ -209,7 +213,7 @@ class Workflow:
         self.path = path.resolve()
         self._text = path.read_text(encoding='utf-8')
         self._unwritten = False
-        self.updated_actions: Updates = {}
+        self.updated_actions: ActionsUpdateResult = {}
         self.needed_updates: set[Action] = set()
 
     def __str__(self):
@@ -514,7 +518,7 @@ class ActionsUpdater:
         export_patches: str | pathlib.Path | None = None,
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
-    ) -> tuple[list[Workflow], Updates]:
+    ) -> tuple[list[Workflow], ActionsUpdateResult]:
         if commit_type not in ('bulk', 'incremental'):
             raise ValueError(f'invalid commit_type value: {commit_type}')
 
@@ -603,7 +607,7 @@ class ActionsUpdater:
         self,
         /,
         workflows: list[Workflow],
-        all_updates: Updates,
+        all_updates: ActionsUpdateResult,
         *,
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
