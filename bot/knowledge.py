@@ -84,6 +84,12 @@ GIT_FORGES: dict[str, dict[str, dict[str, str]]] = {
     },
 }
 
+PYTHON_PACKAGES = {
+    'deno': {'owner': 'denoland', 'repo': 'deno'},
+    'protobug': {'owner': 'yt-dlp', 'repo': 'protobug'},
+    'yt-dlp-ejs': {'owner': 'yt-dlp', 'repo': 'ejs'},
+}
+
 ACTIONS: dict[str, dict[str, typing.Any]] = {
     'actions/cache': {
         'owner': 'actions',
@@ -228,6 +234,9 @@ ACTIONS: dict[str, dict[str, typing.Any]] = {
         'action_slug': 'zizmor-action',
     },
 }
+
+BOT_BEGIN_HTML_TAG = '<!-- BEGIN dlp-bot generated section -->'
+BOT_END_HTML_TAG = '<!-- END dlp-bot generated section -->'
 
 PULL_REQUEST_TEMPLATES: dict[str, str] = {
     'yt-dlp': """\
