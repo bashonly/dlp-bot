@@ -251,7 +251,7 @@ def _real_run(args: argparse.Namespace):
     git.bot_overwrite_branch(pr.head.branch, f'{args.base_remote}/{pr.base.branch}')
     starting_point = git.bot_rev_parse('HEAD')
 
-    project = PROJECTS[args.repository](str(repo_dir), verbose=args.verbose)
+    project = PROJECTS[args.repository](repo_dir, verbose=args.verbose)
     updater = UPDATERS[args.repository](project, pr.api)
 
     updated_paths, all_updates = updater.update(verify=args.verify)

@@ -15,6 +15,10 @@ import tomllib
 import typing
 import urllib.error
 
+from bot.deps.common import (
+    DependenciesUpdater,
+    Project,
+)
 from bot.github import (
     GITHUB_URL_RE,
     GitHubAPICaller,
@@ -299,14 +303,16 @@ def replace_toml_table_text(
         state = INSIDE
 
 
-class PythonProject:
+class PythonProject(Project):
     def __init__(
         self,
         /,
-        project_dir: str = '.',
+        project_path: pathlib.Path,
         *,
         verbose: bool = False,
     ):
+        super().__init__(project_path=project_path, verbose=verbose)
+
         uv_location = shutil.which('uv')
         if not uv_location:
             raise UVError('uv executable could not be found')
@@ -314,22 +320,13 @@ class PythonProject:
             raise UVError(f'unable to execute {uv_location!r}')
 
         self._uv_exe: str = uv_location
-        self._uv_base_args: list[str] = []
-
-        if project_dir and project_dir != '.':
-            self.project_path = pathlib.Path(project_dir).resolve()
-            self.project_path.mkdir(parents=True, exist_ok=True)
-            self._uv_base_args.append(f'--directory={self.project_path}')
-        else:
-            self.project_path = pathlib.Path('.').resolve()
+        self._uv_base_args: list[str] = [f'--directory={self.project_path}']
 
         self.pyproject_path = self.project_path / 'pyproject.toml'
         self._pyproject_text: str | None = None
 
         self.lockfile_path = self.project_path / 'uv.lock'
         self._lockfile_text: str | None = None
-
-        self.verbose = verbose
 
     def load_lockfile_text(self, /, *, refresh: bool = False) -> str | None:
         if not self.lockfile_path.is_file():
@@ -464,15 +461,14 @@ class PythonProject:
         )
 
 
-class PythonDependenciesUpdater:
+class PythonDependenciesUpdater(DependenciesUpdater):
     def __init__(
         self,
         /,
         project: PythonProject,
         gh: GitHubAPICaller,
     ):
-        self.gh = gh
-        self.project = project
+        super().__init__(project=project, gh=gh)
         self.project_path = self.project.project_path
         self.pyproject_path = self.project.pyproject_path
         self.lockfile_path = self.project.lockfile_path
