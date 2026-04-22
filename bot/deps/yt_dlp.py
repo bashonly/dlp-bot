@@ -208,7 +208,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         *,
         updated_paths: set[pathlib.Path],
         all_updates: PythonUpdateResult,
-        env: dict[str, str],
+        env: dict[str, str] | None,
         upgrade_arg: str,
         upgrade_only: str | None,
         verify: bool,

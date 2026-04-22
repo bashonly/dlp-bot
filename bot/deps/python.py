@@ -318,12 +318,12 @@ class PythonProject:
 
         self.verbose = verbose
         self._uv_exe = str(uv_location)
-        self._uv_base_env: dict[str, str] = os.environ.copy()
+        self._uv_base_args: list[str] = []
 
         if project_dir and project_dir != '.':
             self.project_path = pathlib.Path(project_dir).resolve()
             self.project_path.mkdir(parents=True, exist_ok=True)
-            self._uv_base_env.update({'UV_WORKING_DIR': str(self.project_path)})
+            self._uv_base_args.append(f'--directory={self.project_path}')
         else:
             self.project_path = pathlib.Path('.').resolve()
 
@@ -383,21 +383,11 @@ class PythonProject:
         env: dict[str, str] | None = None,
         stdin: str | None = None,
     ) -> list[str]:
-        cmd = [self._uv_exe, *args]
-        env = {
-            **(env or {}),
-            **self._uv_base_env,
-        }
+        cmd = [self._uv_exe, *self._uv_base_args, *args]
 
         if self.verbose:
-            print(
-                ' '.join((
-                    '[uv]',
-                    *(f'{k}={shlex.quote(v)}' for k, v in env.items() if k.startswith('UV_')),
-                    shlex.join(cmd),
-                )),
-                file=sys.stderr,
-            )
+            env_vars = [f'{k}={shlex.quote(v)}' for k, v in (env or {}).items() if k.startswith('UV_')]
+            print(' '.join(('[uv]', *env_vars, shlex.join(cmd))), file=sys.stderr)
 
         # invalidate cached lockfile
         self._lockfile_text = None
@@ -512,15 +502,29 @@ class PythonDependenciesUpdater:
 
         return {}
 
-    def get_last_exclude_newer_timestamp(self, /) -> str | None:
+    def _get_last_cooldown_timestamp(self, /) -> str | None:
         lockfile_toml = self.parse_lockfile_toml()
         if (
             (options := lockfile_toml.get('options'))
             and isinstance(options, dict)
-            and (timestamp := options.get('exclude-newer'))
-            and isinstance(timestamp, str)
+            and (last_cooldown_timestamp := options.get('exclude-newer'))
+            and isinstance(last_cooldown_timestamp, str)
         ):
-            return timestamp
+            return last_cooldown_timestamp
+
+        return None
+
+    def _get_verify_env(self, /, verify: bool, upgrade_only: str | None) -> dict[str, str] | None:
+        if not verify or not upgrade_only or upgrade_only not in self.get_exclude_newer_packages():
+            return None
+
+        # If only verifying or only upgrading packages that are cooldown-exempt,
+        # then use the previous cooldown timestamp that was recorded in uv.lock
+        if last_cooldown_timestamp := self._get_last_cooldown_timestamp():
+            return {
+                **os.environ,
+                'UV_EXCLUDE_NEWER': last_cooldown_timestamp,
+            }
 
         return None
 
@@ -538,11 +542,7 @@ class PythonDependenciesUpdater:
 
         pre_upgrade_data = self._pre_upgrade(updated_paths, upgrade_only=upgrade_only, verify=verify)
 
-        env = {}
-        # If only verifying or upgrading packages that are cooldown-exempt, use the last timestamp
-        if verify or (upgrade_only and upgrade_only in self.get_exclude_newer_packages()):
-            if last_timestamp := self.get_last_exclude_newer_timestamp():
-                env['UV_EXCLUDE_NEWER'] = last_timestamp
+        env = self._get_verify_env(verify=verify, upgrade_only=upgrade_only)
 
         # Upgrade packages in lockfile
         upgrade_arg = f'--upgrade-package={upgrade_only}' if upgrade_only else '--upgrade'
@@ -593,7 +593,7 @@ class PythonDependenciesUpdater:
         *,
         updated_paths: set[pathlib.Path],
         all_updates: PythonUpdateResult,
-        env: dict[str, str],
+        env: dict[str, str] | None,
         upgrade_arg: str,
         upgrade_only: str | None,
         verify: bool,
