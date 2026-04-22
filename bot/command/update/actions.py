@@ -219,7 +219,7 @@ def _real_run(args: argparse.Namespace):
     else:
         repo_dir = pathlib.Path(args.directory).resolve()
 
-    repo_info = SUPPORTED_REPOS[args.repository]
+    repo_info = SERVICED_REPOS[args.repository]
     pr = GitHubPullRequest.from_branches(
         repo=args.repository,
         base=args.base_label or ':'.join((repo_info['owner'], repo_info['default_branch'])),
@@ -293,8 +293,8 @@ def _real_run(args: argparse.Namespace):
 
     if args.export_pr:
         args.export_pr.mkdir(parents=True, exist_ok=True)
-        (args.export_pr / 'pull-request.bot.md').write_text(pr.body)
-        (args.export_pr / 'commit-message.bot.txt').write_text(pr.commit_message)
+        (args.export_pr / 'pull-request.actions.md').write_text(pr.body)
+        (args.export_pr / 'commit-message.actions.txt').write_text(pr.commit_message)
     else:
         for row in table_a_raza(
             ('action', 'old', 'new'),

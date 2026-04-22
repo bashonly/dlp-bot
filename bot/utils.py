@@ -20,6 +20,10 @@ class BotError(Exception):
     pass
 
 
+class VerificationError(BotError):
+    pass
+
+
 class SuccessMessage(BaseException):
     pass
 

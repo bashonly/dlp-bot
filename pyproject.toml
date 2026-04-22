@@ -27,7 +27,7 @@ dependencies = []
 actions = [
     "pyyaml~=6.0.0",
 ]
-update = [
+deps = [
     "uv",
 ]
 
