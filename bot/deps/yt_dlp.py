@@ -257,7 +257,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
 
         # Compile requirements for single packages; need to compare before & after .txt's for reporting
         for package in ('pip',):
-            requirements_path = self.project_path / REQS_OUTPUT_TMPL.format(package)
+            requirements_path = self._requirements_path / REQS_OUTPUT_TMPL.format(package)
             if requirements_path.is_file():
                 old_requirements_txt = requirements_path.read_text()
             else:
@@ -267,9 +267,9 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
                 upgrade_arg,
                 input_line=package,
                 env=env,
-                output_file=self._requirements_path / REQS_OUTPUT_TMPL.format(package),
+                output_file=requirements_path,
             )
-            updated_paths.add(self._requirements_path / REQS_OUTPUT_TMPL.format(package))
+            updated_paths.add(requirements_path)
 
             new_requirements_txt = requirements_path.read_text()
             all_updates.update(evaluate_requirements_txt(old_requirements_txt, new_requirements_txt))
