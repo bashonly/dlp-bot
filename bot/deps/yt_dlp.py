@@ -297,12 +297,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         self.uv('lock', upgrade_arg, env=env)
         updated_paths.add(self.lockfile_path)
 
-    def update_ejs(
-        self,
-        /,
-        *,
-        verify: bool = False,
-    ):
+    def update_ejs(self, /):
         PACKAGE_NAME = 'yt-dlp-ejs'
         PREFIX = f'    "{PACKAGE_NAME}=='
         LIBRARY_NAME = PACKAGE_NAME.replace('-', '_')
@@ -387,12 +382,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
             makefile = makefile.replace(f'{key} = {makefile_info[key]}', f'{key} = {wheel_info[key]}')
         self._makefile_path.write_text(makefile)
 
-    def update_protobug(
-        self,
-        /,
-        *,
-        verify: bool = False,
-    ):
+    def update_protobug(self, /):
         PACKAGE_NAME = 'protobug'
         PREFIX = f'    "{PACKAGE_NAME}=='
         LIBRARY_NAME = PACKAGE_NAME.replace('-', '_')
