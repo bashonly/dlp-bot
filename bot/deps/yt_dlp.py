@@ -19,7 +19,6 @@ from bot.deps.python import (
 from bot.utils import request
 
 REQS_OUTPUT_TMPL = 'requirements-{}.txt'
-# CUSTOM_COMPILE_COMMAND = 'python -m devscripts.update_requirements'
 
 PINNED_EXTRAS = {
     'pin': 'default',
@@ -172,8 +171,6 @@ def ejs_makefile_variables(**kwargs) -> dict[str, str | None]:
 
 
 class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
-    _UV_CUSTOM_COMPILE_COMMAND = 'python -m bot update dependencies yt-dlp'
-
     def __init__(self, /, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._makefile_path = self.project_path / 'Makefile'

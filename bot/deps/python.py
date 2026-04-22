@@ -300,8 +300,6 @@ def replace_toml_table_text(
 
 
 class PythonProject:
-    _UV_CUSTOM_COMPILE_COMMAND = 'python -m bot update dependencies'
-
     def __init__(
         self,
         /,
@@ -440,11 +438,12 @@ class PythonProject:
             '--refresh',
             '--no-emit-project',
             '--no-default-groups',
+            '--no-header',
             *(f'--extra={extra}' for extra in (extras or [])),
             *(f'--group={group}' for group in (groups or [])),
             *(f'--prune={package}' for package in (prune_packages or [])),
             *(f'--no-emit-package={package}' for package in (omit_packages or [])),
-            *(['--no-annotate', '--no-hashes', '--no-header'] if bare else []),
+            *(['--no-annotate', '--no-hashes'] if bare else []),
             *([f'--output-file={output_file.relative_to(self.project_path)}'] if output_file else []),
         )
 
@@ -467,8 +466,8 @@ class PythonProject:
             '--refresh',
             '--generate-hashes',
             '--no-strip-markers',
+            '--no-header',
             '--universal',
-            f'--custom-compile-command={self._UV_CUSTOM_COMPILE_COMMAND}',
             *args,
             *([f'--output-file={output_file.relative_to(self.project_path)}'] if output_file else []),
             '-',  # Read from stdin
