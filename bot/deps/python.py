@@ -300,13 +300,14 @@ def replace_toml_table_text(
 
 
 class PythonProject:
+    _UV_CUSTOM_COMPILE_COMMAND = 'python -m bot update dependencies'
+
     def __init__(
         self,
         /,
         project_dir: str = '.',
         *,
         uv_location: str | None = None,
-        uv_custom_compile_command: str | None = None,
         verbose: bool = False,
     ):
         if not uv_location:
@@ -319,7 +320,6 @@ class PythonProject:
 
         self.verbose = verbose
         self._uv_exe = str(uv_location)
-        self._uv_compile_cmd = uv_custom_compile_command
         self._uv_base_env: dict[str, str] = os.environ.copy()
 
         if project_dir and project_dir != '.':
@@ -468,7 +468,7 @@ class PythonProject:
             '--generate-hashes',
             '--no-strip-markers',
             '--universal',
-            *(f'--custom-compile-command={self._uv_compile_cmd}' if self._uv_compile_cmd else []),
+            f'--custom-compile-command={self._UV_CUSTOM_COMPILE_COMMAND}',
             *args,
             *([f'--output-file={output_file.relative_to(self.project_path)}'] if output_file else []),
             '-',  # Read from stdin
