@@ -305,19 +305,15 @@ class PythonProject:
         /,
         project_dir: str = '.',
         *,
-        uv_location: str | None = None,
         verbose: bool = False,
     ):
+        uv_location = shutil.which('uv')
         if not uv_location:
-            uv_location = shutil.which('uv')
-            if not uv_location:
-                raise UVError('uv executable could not be found')
-
+            raise UVError('uv executable could not be found')
         if not os.access(uv_location, os.F_OK | os.X_OK) or os.path.isdir(uv_location):
             raise UVError(f'unable to execute {uv_location!r}')
 
-        self.verbose = verbose
-        self._uv_exe = str(uv_location)
+        self._uv_exe: str = uv_location
         self._uv_base_args: list[str] = []
 
         if project_dir and project_dir != '.':
@@ -332,6 +328,8 @@ class PythonProject:
 
         self.lockfile_path = self.project_path / 'uv.lock'
         self._lockfile_text: str | None = None
+
+        self.verbose = verbose
 
     def load_lockfile_text(self, /, *, refresh: bool = False) -> str | None:
         if not self.lockfile_path.is_file():
