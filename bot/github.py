@@ -312,7 +312,7 @@ class GitHubAPICaller(GitHubBaseCaller):
         @param page:                    (optional) page number (default: 1)
         @returns                        list of the repository's tags
         """
-        return self.call(f'/repos/{owner}/{repo}/tags')
+        return self.call(f'/repos/{owner}/{repo}/tags', query={'per_page': per_page, 'page': page})
 
     # Repositories => Forks: https://docs.github.com/en/rest/repos/forks?apiVersion=2026-03-10
 
