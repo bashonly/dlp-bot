@@ -24,24 +24,20 @@ class Git:
         /,
         repo_dir: str = '.',
         *,
-        exe_location: str | None = None,
         protocol: str | None = None,
         origin_name: str | None = None,
         upstream_name: str | None = None,
         verbose: bool = False,
     ):
+        exe_location = shutil.which('git')
         if not exe_location:
-            exe_location = shutil.which('git')
-            if not exe_location:
-                raise GitError('git executable could not be found')
-
+            raise GitError('git executable could not be found')
         if not os.access(exe_location, os.F_OK | os.X_OK) or os.path.isdir(exe_location):
             raise GitError(f'unable to execute {exe_location!r}')
 
-        self._exe = str(exe_location)
-        self.verbose = verbose
-
+        self._exe: str = exe_location
         self._base_args = []
+
         if repo_dir and repo_dir != '.':
             path = pathlib.Path(repo_dir).resolve()
             path.mkdir(parents=True, exist_ok=True)
@@ -49,6 +45,8 @@ class Git:
             self._base_args.extend(['-C', self.repo_dir])
         else:
             self.repo_dir = str(pathlib.Path('.').resolve())
+
+        self.verbose = verbose
 
         if not self.bot_version().startswith('git '):
             raise GitError(f'invalid output from {self._exe}')
