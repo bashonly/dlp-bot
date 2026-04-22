@@ -89,6 +89,7 @@ BUNDLE_TARGETS = {
     ),
 }
 
+# XXX: keep this in sync with bot.knowledge.PYTHON_PACKAGES
 PYINSTALLER_BUILDS_TARGETS = {
     'win-x64-pyinstaller': 'win_amd64',
     'win-x86-pyinstaller': 'win32',
@@ -236,7 +237,10 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
                     output_file=requirements_path,
                 )
                 updated_paths.add(requirements_path)
-                all_updates.update(evaluate_requirements_txt(old_requirements_txt, requirements_path.read_text()))
+                diff_dict = evaluate_requirements_txt(old_requirements_txt, requirements_path.read_text())
+                if pyinstaller_diff := diff_dict.get('pyinstaller'):
+                    # NB: this depends on 'pyinstaller[asset_tag]' keys in bot.knowledge.PYTHON_PACKAGES
+                    all_updates.update({f'pyinstaller[{asset_tag}]': pyinstaller_diff})
 
         # Export bundle requirements; any updates to these are already recorded w/ uv.lock package diff
         for target_suffix, target in BUNDLE_TARGETS.items():

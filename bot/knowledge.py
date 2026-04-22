@@ -85,9 +85,13 @@ GIT_FORGES: dict[str, dict[str, dict[str, str]]] = {
     },
 }
 
+# XXX: keep 'pyinstaller[*]' keys in sync with bot.deps.yt_dlp.PYINSTALLER_BUILDS_TARGETS values
 PYTHON_PACKAGES = {
     'deno': {'owner': 'denoland', 'repo': 'deno'},
     'protobug': {'owner': 'yt-dlp', 'repo': 'protobug'},
+    'pyinstaller[win_amd64]': {'owner': 'pyinstaller', 'repo': 'pyinstaller'},
+    'pyinstaller[win32]': {'owner': 'pyinstaller', 'repo': 'pyinstaller'},
+    'pyinstaller[win_arm64]': {'owner': 'pyinstaller', 'repo': 'pyinstaller'},
     'yt-dlp-ejs': {'owner': 'yt-dlp', 'repo': 'ejs'},
 }
 
