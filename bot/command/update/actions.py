@@ -213,11 +213,11 @@ def _real_run(args: argparse.Namespace):
 
     if not args.directory:
         if args.clone:
-            repo_dir = pathlib.Path(tempfile.mkdtemp())
+            repo_path = pathlib.Path(tempfile.mkdtemp())
         else:
-            repo_dir = pathlib.Path('.').resolve()
+            repo_path = pathlib.Path('.')
     else:
-        repo_dir = pathlib.Path(args.directory).resolve()
+        repo_path = pathlib.Path(args.directory)
 
     repo_info = SERVICED_REPOS[args.repository]
     pr = GitHubPullRequest.from_branches(
@@ -229,7 +229,7 @@ def _real_run(args: argparse.Namespace):
     )
 
     git = Git(
-        str(repo_dir),
+        repo_path,
         protocol=args.git_protocol,
         origin_name=args.head_remote,
         upstream_name=args.base_remote,

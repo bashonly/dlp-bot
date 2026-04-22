@@ -213,11 +213,11 @@ def print_table(all_updates):  # TODO: typing
 def _real_run(args: argparse.Namespace):
     if not args.directory:
         if args.clone:
-            repo_dir = pathlib.Path(tempfile.mkdtemp())
+            repo_path = pathlib.Path(tempfile.mkdtemp())
         else:
-            repo_dir = pathlib.Path('.').resolve()
+            repo_path = pathlib.Path('.')
     else:
-        repo_dir = pathlib.Path(args.directory).resolve()
+        repo_path = pathlib.Path(args.directory)
 
     repo_info = SERVICED_REPOS[args.repository]
     pr = GitHubPullRequest.from_branches(
@@ -229,7 +229,7 @@ def _real_run(args: argparse.Namespace):
     )
 
     git = Git(
-        str(repo_dir),
+        repo_path,
         protocol=args.git_protocol,
         origin_name=args.head_remote,
         upstream_name=args.base_remote,
@@ -251,7 +251,7 @@ def _real_run(args: argparse.Namespace):
     git.bot_overwrite_branch(pr.head.branch, f'{args.base_remote}/{pr.base.branch}')
     starting_point = git.bot_rev_parse('HEAD')
 
-    project = PROJECTS[args.repository](repo_dir, verbose=args.verbose)
+    project = PROJECTS[args.repository](repo_path, verbose=args.verbose)
     updater = UPDATERS[args.repository](project, pr.api)
 
     updated_paths, all_updates = updater.update(verify=args.verify)

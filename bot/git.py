@@ -22,13 +22,16 @@ class Git:
     def __init__(
         self,
         /,
-        repo_dir: str = '.',
+        repo_path: pathlib.Path,
         *,
         protocol: str | None = None,
         origin_name: str | None = None,
         upstream_name: str | None = None,
         verbose: bool = False,
     ):
+        self.repo_path = pathlib.Path(repo_path).expanduser().resolve()
+        self.repo_path.mkdir(parents=True, exist_ok=True)
+
         exe_location = shutil.which('git')
         if not exe_location:
             raise GitError('git executable could not be found')
@@ -36,16 +39,7 @@ class Git:
             raise GitError(f'unable to execute {exe_location!r}')
 
         self._exe: str = exe_location
-        self._base_args = []
-
-        if repo_dir and repo_dir != '.':
-            path = pathlib.Path(repo_dir).resolve()
-            path.mkdir(parents=True, exist_ok=True)
-            self.repo_dir = str(path)
-            self._base_args.extend(['-C', self.repo_dir])
-        else:
-            self.repo_dir = str(pathlib.Path('.').resolve())
-
+        self._base_args: list[str] = ['-C', str(self.repo_path)]
         self.verbose = verbose
 
         if not self.bot_version().startswith('git '):
@@ -262,7 +256,7 @@ class Git:
             raise ValueError('an upstream remote was not configured')
 
         upstream_url = self.bot_make_remote_url(forge, owner, repo)
-        self.clone('--origin', self._upstream_name, upstream_url, self.repo_dir)
+        self.clone('--origin', self._upstream_name, upstream_url, str(self.repo_path))
 
     def bot_fetch_upstream(self, /) -> list[str]:
         if not self._upstream_name:

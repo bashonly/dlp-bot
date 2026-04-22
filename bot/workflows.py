@@ -327,7 +327,7 @@ class ActionsUpdater:
     def from_repo_info(
         cls,
         /,
-        local_path: str | pathlib.Path,
+        local_path: pathlib.Path,
         repo_owner: str,
         repo_name: str,
         *,
@@ -336,7 +336,7 @@ class ActionsUpdater:
         **kwargs,
     ) -> ActionsUpdater:
         return cls(
-            git=Git(str(local_path), verbose=verbose),
+            git=Git(local_path, verbose=verbose),
             api=GitHubAPICaller(github_token=github_token, verbose=verbose),
             web=GitHubWebFetcher(verbose=verbose),
             repo_owner=repo_owner,
@@ -522,10 +522,8 @@ class ActionsUpdater:
         if commit_type not in ('bulk', 'incremental'):
             raise ValueError(f'invalid commit_type value: {commit_type}')
 
-        base_path = pathlib.Path(self.git.repo_dir).resolve()
-        gha_path = base_path / WORKFLOWS_DIRECTORY
         starting_point = self.git.bot_rev_parse('HEAD')
-
+        gha_path = self.git.repo_path / WORKFLOWS_DIRECTORY
         workflows = [Workflow(path) for path in itertools.chain(gha_path.glob('*.yml'), gha_path.glob('*.yaml'))]
         all_updates = {}
 
