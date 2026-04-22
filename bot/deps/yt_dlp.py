@@ -170,6 +170,10 @@ def ejs_makefile_variables(**kwargs) -> dict[str, str | None]:
     return makefile_variables('EJS', filetypes=['PY', 'JS'], **kwargs)
 
 
+def protobug_makefile_variables(**kwargs) -> dict[str, str | None]:
+    return makefile_variables('PROTOBUG', filetypes=['PY'], **kwargs)
+
+
 class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
     def __init__(self, /, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -373,6 +377,78 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
                 hash_mapping=hash_mapping,
             ),
         )
+
+        content = self.load_pyproject_text()
+        updated = content.replace(PREFIX + current_version, PREFIX + version)
+        self.write_pyproject_text(updated)
+
+        makefile = self._makefile_path.read_text()
+        for key in wheel_info:
+            makefile = makefile.replace(f'{key} = {makefile_info[key]}', f'{key} = {wheel_info[key]}')
+        self._makefile_path.write_text(makefile)
+
+    def update_protobug(
+        self,
+        /,
+        *,
+        verify: bool = False,
+    ):
+        PACKAGE_NAME = 'protobug'
+        PREFIX = f'    "{PACKAGE_NAME}=='
+        LIBRARY_NAME = PACKAGE_NAME.replace('-', '_')
+
+        current_version = None
+        with self.pyproject_path.open() as file:
+            for line in file:
+                if not line.startswith(PREFIX):
+                    continue
+                current_version, _, _ = line.removeprefix(PREFIX).partition('"')
+
+        if not current_version:
+            raise ValueError(f'{PACKAGE_NAME} dependency line could not be found')
+
+        makefile_info = protobug_makefile_variables(keys_only=True)
+        prefixes = tuple(f'{key} = ' for key in makefile_info)
+        with self._makefile_path.open() as file:
+            for line in file:
+                if not line.startswith(prefixes):
+                    continue
+                key, _, val = line.partition(' = ')
+                makefile_info[key] = val.rstrip()
+
+        info = self.gh.get_latest_release('yt-dlp', 'protobug')
+        version = info['tag_name']
+        if version == current_version:
+            print(f'{PACKAGE_NAME} is up to date! ({version})', file=sys.stderr)
+            return
+
+        print(f'Updating {PACKAGE_NAME} from {current_version} to {version}', file=sys.stderr)
+        wheel_info = {}
+        asset_info = next(
+            asset
+            for asset in info['assets']
+            if asset['name'].startswith(f'{LIBRARY_NAME}-') and asset['name'].endswith('.whl')
+        )
+
+        with request(asset_info['browser_download_url'], timeout=30) as resp:
+            data = resp.read()
+
+        # verify digest from github
+        digest = asset_info['digest']
+        algo, _, expected = digest.partition(':')
+        hexdigest = hashlib.new(algo, data).hexdigest()
+        if hexdigest != expected:
+            raise ValueError(f'downloaded attest mismatch ({hexdigest!r} != {expected!r})')
+
+        wheel_info = protobug_makefile_variables(
+            version=version,
+            name=asset_info['name'],
+            digest=digest,
+            data=data,
+        )
+
+        if missing_fields := [key for key in makefile_info if not wheel_info.get(key)]:
+            raise ValueError(f'wheel info not found in release: {", ".join(missing_fields)}')
 
         content = self.load_pyproject_text()
         updated = content.replace(PREFIX + current_version, PREFIX + version)
