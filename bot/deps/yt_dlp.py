@@ -30,6 +30,9 @@ PINNED_EXTRAS = {
     'pin-deno': 'deno',
 }
 
+EXPORT_GROUPS = ('build',)
+COMPILE_PACKAGES = ('pip',)
+
 EJS_ASSETS = {
     'yt.solver.lib.js': False,
     'yt.solver.lib.min.js': False,
@@ -264,7 +267,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
             updated_paths.add(self._requirements_path / REQS_OUTPUT_TMPL.format(target_suffix))
 
         # Export group requirements; any updates to these are already recorded w/ uv.lock package diff
-        for group in ('build',):
+        for group in EXPORT_GROUPS:
             self.uv_export(
                 groups=[group],
                 output_file=self._requirements_path / REQS_OUTPUT_TMPL.format(group),
@@ -272,7 +275,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
             updated_paths.add(self._requirements_path / REQS_OUTPUT_TMPL.format(group))
 
         # Compile requirements for single packages; need to compare before & after .txt's for reporting
-        for package in ('pip',):
+        for package in COMPILE_PACKAGES:
             requirements_path = self._requirements_path / REQS_OUTPUT_TMPL.format(package)
             if requirements_path.is_file():
                 old_requirements_txt = requirements_path.read_text()
