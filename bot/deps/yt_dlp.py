@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import collections.abc
 import dataclasses
 import hashlib
 import io
@@ -192,6 +191,12 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         upgrade_only: str | None,
         verify: bool,
     ):
+        if upgrade_only is not None:
+            updated_paths |= {
+                'protobug': self.update_protobug,
+                'yt-dlp-ejs': self.update_ejs,
+            }[upgrade_only]()
+
         pyproject_text = self.load_pyproject_text(refresh=True)
         extras = get_extras(self.parse_pyproject_toml(), resolve=False)
 
@@ -464,9 +469,3 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         updated_paths.add(self._makefile_path)
 
         return updated_paths
-
-    def get_special_update_function(self, /, value: str) -> collections.abc.Callable:
-        return {
-            'protobug': self.update_protobug,
-            'yt-dlp-ejs': self.update_ejs,
-        }[value]

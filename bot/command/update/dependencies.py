@@ -179,17 +179,10 @@ def _real_run(args: argparse.Namespace):
         gh=pr.api,
     )
 
-    special_updated_paths = set()
-    if args.upgrade_only is not None:
-        special_updated_paths = updater.get_special_update_function(args.upgrade_only)()
-
     updated_paths, all_updates = updater.update(
         upgrade_only=args.upgrade_only,
         verify=args.verify,
     )
-
-    updated_paths |= special_updated_paths
-
     if not all_updates:
         raise SuccessMessage('All dependencies are up-to-date')
     elif args.verify:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import collections.abc
 import pathlib
 
 
@@ -63,12 +62,3 @@ class DependenciesUpdater:
         Should return a tuple of the pull request description string and commit message string.
         """
         raise NotImplementedError('this method must be implemented by subclasses')
-
-    def get_special_update_function(self, /, value: str) -> collections.abc.Callable:
-        """To be re-implemented by subclasses.
-
-        Should return a function/lambda/method that performs the special update procedure.
-
-        The returned function should itself return a set with all updated paths.
-        """
-        return lambda: set()
