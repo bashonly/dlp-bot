@@ -13,6 +13,15 @@ import pathlib
 import sys
 import tempfile
 
+from bot.command.common import (
+    configure_commit_options,
+    configure_export_options,
+    configure_git_options,
+    configure_github_options,
+    configure_logging_options,
+    configure_remote_target_options,
+    configure_update_options,
+)
 from bot.git import Git, GitError
 from bot.github import GitHubPullRequest, RelativeBranch
 from bot.knowledge import (
@@ -25,7 +34,6 @@ from bot.knowledge import (
 from bot.utils import (
     BotError,
     SuccessMessage,
-    parse_datetime_from_cooldown,
     safe_format,
     table_a_raza,
 )
@@ -62,146 +70,17 @@ def configure_parser(parser: argparse.ArgumentParser):
             'if not provided and --clone is used, it will default to a temporary directory'
         ),
     )
-    parser.add_argument(
-        '-B',
-        '--base',
-        dest='base_label',
-        metavar='OWNER[:REPO]:BRANCH',
-        help=(
-            'label for the branch that the pull request should be merged into, '
-            'formatted as {owner}[:{repo}]{branch}. if "repo" is not provided, '
-            'it will default to the value of the positional REPOSITORY argument. '
-            'if --base is not used, it will default to a value that is '
-            'hardcoded for the given repository'
-        ),
+    # Add common option groups
+    configure_remote_target_options(
+        parser,
+        default_head_label=DEFAULT_HEAD.label,
     )
-    parser.add_argument(
-        '-H',
-        '--head',
-        dest='head_label',
-        default=DEFAULT_HEAD.label,
-        metavar='OWNER[:REPO]:BRANCH',
-        help=(
-            'label for the branch that the pull request should be created from, '
-            'formatted as {owner}[:{repo}]{branch}. if not provided, it will default to '
-            f'{DEFAULT_HEAD}'
-        ),
-    )
-    parser.add_argument(
-        '--clone',
-        dest='clone',
-        action='store_true',
-        help='create a fresh clone of the repository instead of using an existing local repo',
-    )
-    parser.add_argument(
-        '--no-clone',
-        dest='clone',
-        action='store_false',
-        default=False,
-        help='do not clone the repository; operate on an existing local repo (default)',
-    )
-    parser.add_argument(
-        '--pr',
-        dest='pr',
-        action='store_true',
-        help='create a pull request targeting the base branch and submit it to the base owner',
-    )
-    parser.add_argument(
-        '--no-pr',
-        dest='pr',
-        action='store_false',
-        default=False,
-        help='do not create or submit a pull request (default)',
-    )
-    parser.add_argument(
-        '--head-remote',
-        metavar='REMOTE',
-        default='origin',
-        help=('name of the head repository\'s git remote in the local repository clone. (default: "origin")'),
-    )
-    parser.add_argument(
-        '--base-remote',
-        metavar='REMOTE',
-        default='upstream',
-        help=('name of the base repository\'s git remote in the local repository clone. (default: "upstream")'),
-    )
-    parser.add_argument(
-        '--exclude-newer',
-        metavar='COOLDOWN',
-        default=os.getenv('DLPBOT_ACTIONS_COOLDOWN'),
-        help=(
-            'exclude versions newer than COOLDOWN, which can be any of: '
-            'ISO8601 duration (e.g. "P7D"), '
-            'natural language duration (e.g. "7 days"), '
-            'ISO8601 timestamp (e.g. "2026-03-28T23:10:22Z"), '
-            'or a UNIX timestamp (seconds since the epoch). '
-            'if not provided, the value of the DLPBOT_ACTIONS_COOLDOWN environment variable '
-            'will be used if set, or else the default is no cooldown'
-        ),
-        type=parse_datetime_from_cooldown,
-    )
-    parser.add_argument(
-        '--github-token',
-        metavar='TOKEN',
-        default=os.getenv('GH_TOKEN'),
-        help=(
-            'GitHub API token (PAT, classic, GHA, etc) used to avoid being rate-limited '
-            'and to authenticate for git-pushes and pull request creation. '
-            'if this option is not used, the value of the GH_TOKEN environment '
-            'variable will be used (if it is set)'
-        ),
-    )
-    parser.add_argument(
-        '--git-protocol',
-        choices=['ssh', 'https'],
-        help=('protocol to use with git. one of "ssh" (default) or "https"'),
-    )
-    parser.add_argument(
-        '--commit-type',
-        choices=['bulk', 'incremental'],
-        help=(
-            'one of: '
-            '"bulk" (commit changes to the current branch after ALL actions are updated), '
-            '"incremental" (commit changes to the current branch after EACH action is updated). '
-            'defaults to "bulk" unless the --pr option is used, which defaults to "incremental"'
-        ),
-    )
-    parser.add_argument(
-        '--export-pr',
-        metavar='DIRPATH',
-        help=(
-            'if an output directory path is provided, then export '
-            'the pull request body and commit message to files in the given output directory'
-        ),
-        type=pathlib.Path,
-    )
-    parser.add_argument(
-        '--export-patches',
-        metavar='DIRPATH',
-        help=(
-            'if an output directory path is provided, then export '
-            'the commit(s) to patch file(s) in the given output directory'
-        ),
-        type=pathlib.Path,
-    )
-    parser.add_argument(
-        '--commit-prefix',
-        metavar='PREFIX',
-        help=(
-            'prefix to add each to each commit subject line and to the pull request title. '
-            'defaults are hardcoded per repository'
-        ),
-    )
-    parser.add_argument(
-        '--commit-addendum',
-        metavar='MESSAGE',
-        help='an addendum to add to each commit message. defaults are hardcoded per repository',
-    )
-    parser.add_argument(
-        '--verbose',
-        action='store_true',
-        help='print verbose debug output (for all git operations and network requests)',
-    )
+    configure_update_options(parser, add_exclude_newer=True)
+    configure_git_options(parser)
+    configure_github_options(parser)
+    configure_commit_options(parser, add_commit_type=True)
+    configure_export_options(parser)
+    configure_logging_options(parser)
 
 
 def _real_run(args: argparse.Namespace):

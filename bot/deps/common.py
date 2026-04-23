@@ -1,8 +1,7 @@
 from __future__ import annotations
 
+import collections.abc
 import pathlib
-
-from bot.github import GitHubAPICaller
 
 
 class Project:
@@ -16,34 +15,60 @@ class Project:
         self,
         /,
         project_path: pathlib.Path,
-        *,
-        verbose: bool = False,
+        **kwargs,
     ):
         self.project_path = pathlib.Path(project_path).expanduser().resolve()
         self.project_path.mkdir(parents=True, exist_ok=True)
-        self.verbose = verbose
 
 
 class DependenciesUpdater:
     """Base class for all dependencies updaters
 
+    Required positional argument(s):
+
     @param project:         an instance of Project or a Project subclass
-    @param gh:              an instance of bot.github.GitHubAPICaller
     """
 
     def __init__(
         self,
         /,
         project,
-        gh: GitHubAPICaller,
+        **kwargs,
     ):
         self.project = project
-        self.gh = gh
 
-    def update(self, /, *args, **kwargs):
-        """Update the project's dependencies"""
+    def update(
+        self,
+        /,
+        **kwargs,
+    ):
+        """Update the project's dependencies.
+
+        Should return a tuple of a set with all updated paths and a dict with results data.
+        """
         raise NotImplementedError('this method must be implemented by subclasses')
 
-    def parse_results(self, /, *args, **kwargs):
-        """Parse update()'s result and return a tuple of the PR description and commit message"""
+    def parse_results(
+        self,
+        /,
+        all_updates,
+        **kwargs,
+    ):
+        """Parse the update results and generate text for PRs and commits.
+
+        Required positional argument(s):
+
+        @param all_updates:     the dict of result data that was returned from update()
+
+        Should return a tuple of the pull request description string and commit message string.
+        """
         raise NotImplementedError('this method must be implemented by subclasses')
+
+    def get_special_update_function(self, /, value: str) -> collections.abc.Callable:
+        """To be re-implemented by subclasses.
+
+        Should return a function/lambda/method that performs the special update procedure.
+
+        The returned function should itself return a set with all updated paths.
+        """
+        return lambda: set()

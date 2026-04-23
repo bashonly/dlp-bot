@@ -12,6 +12,11 @@ import os
 import pathlib
 import sys
 
+from bot.command.common import (
+    configure_github_options,
+    configure_logging_options,
+    configure_remote_target_options,
+)
 from bot.github import GitHubPullRequest
 from bot.knowledge import (
     PULL_REQUEST_TEMPLATES,
@@ -32,41 +37,13 @@ def configure_parser(parser: argparse.ArgumentParser):
         choices=list(SERVICED_REPOS),
         help=f'name of the (upstream) repository. one of: {", ".join(SERVICED_REPOS)}',
     )
-    parser.add_argument(
-        '-H',
-        '--head',
-        dest='head_label',
-        metavar='OWNER[:REPO]:BRANCH',
-        required=True,
-        help=(
-            'label for the branch that the pull request should be created from, '
-            'formatted as {owner}[:{repo}]{branch} (REQUIRED)'
-        ),
-    )
-    parser.add_argument(
-        '-B',
-        '--base',
-        dest='base_label',
-        metavar='OWNER[:REPO]:BRANCH',
-        help=(
-            'label for the branch that the pull request should be merged into, '
-            'formatted as {owner}[:{repo}]{branch}. if "repo" is not provided, '
-            'it will default to the value of the positional REPOSITORY argument. '
-            'if --base is not used, it will default to a value that is '
-            'hardcoded for the given repository'
-        ),
-    )
-    parser.add_argument(
-        '--github-token',
-        metavar='TOKEN',
-        default=os.getenv('GH_TOKEN'),
-        help=(
-            'GitHub token (PAT, classic, GHA, etc) used for API authentication. '
-            'if this option is not used, the value of the GH_TOKEN environment '
-            'variable will be used (if it is set)'
-        ),
-    )
-    parser.add_argument(
+    # Add common option groups
+    configure_remote_target_options(parser)
+    configure_github_options(parser)
+    configure_logging_options(parser)
+    # Add pull request options group
+    pr_group = parser.add_argument_group('pull request options')
+    pr_group.add_argument(
         '--title',
         metavar='TITLE',
         help=(
@@ -74,7 +51,7 @@ def configure_parser(parser: argparse.ArgumentParser):
             f'"{FILE_PREFIX}" to load the title from a file instead'
         ),
     )
-    parser.add_argument(
+    pr_group.add_argument(
         '--body',
         metavar='BODY',
         help=(
@@ -82,7 +59,7 @@ def configure_parser(parser: argparse.ArgumentParser):
             f'"{FILE_PREFIX}" to load the body from a file instead'
         ),
     )
-    parser.add_argument(
+    pr_group.add_argument(
         '--template',
         metavar='TEMPLATE',
         help=(
@@ -90,11 +67,6 @@ def configure_parser(parser: argparse.ArgumentParser):
             f'"{FILE_PREFIX}" to load the template from a file instead. if not provided, '
             'will default to a hardcoded value for the given repository (if one exists)'
         ),
-    )
-    parser.add_argument(
-        '--verbose',
-        action='store_true',
-        help='print verbose debug output (for all network requests)',
     )
 
 

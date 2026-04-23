@@ -58,8 +58,28 @@ def parse_owner_and_repo(value: str) -> tuple[str, str]:
     return owner, rest.partition('/')[0]
 
 
-def parse_datetime_from_cooldown(cooldown: str) -> dt.datetime:
-    UNIX_TIMESTAMP_RE = re.compile(r'[0-9]{10}(?:\.[0-9]+)?')
+UNIX_TIMESTAMP_RE = re.compile(r'[0-9]{10}(?:\.[0-9]+)?')
+
+ISO8601_DURATION_RE = re.compile(r"""(?x)
+    P(?:(?P<days>\d+\.\d+|\d*)D)?
+    T?
+        (?:(?P<hours>\d+\.\d+|\d*)H)?
+        (?:(?P<minutes>\d+\.\d+|\d*)M)?
+        (?:(?P<seconds>\d+\.\d+|\d*)S)?
+    """)
+
+NATURAL_LANGUAGE_RE = re.compile(r"""(?x)
+    (?:(?P<weeks>\d+)\s*weeks?(?:,\s+)?)?
+    (?:(?P<days>\d+)\s*days?(?:,\s+)?)?
+    (?:(?P<hours>\d+)\s*hours?(?:,\s+)?)?
+    (?:(?P<minutes>\d+)\s*minutes?(?:,\s+)?)?
+    (?:(?P<seconds>\d+)\s*seconds?)?
+    """)
+
+
+def parse_datetime_from_cooldown(cooldown: str | None) -> dt.datetime:
+    if not cooldown:
+        return dt.datetime.now(tz=dt.UTC)
 
     if UNIX_TIMESTAMP_RE.fullmatch(cooldown):
         with contextlib.suppress(OSError, OverflowError, ValueError):
@@ -67,21 +87,6 @@ def parse_datetime_from_cooldown(cooldown: str) -> dt.datetime:
 
     with contextlib.suppress(OSError, OverflowError, ValueError):
         return dt.datetime.fromisoformat(cooldown)
-
-    ISO8601_DURATION_RE = re.compile(r"""(?x)
-        P(?:(?P<days>\d+\.\d+|\d*)D)?
-        T?
-          (?:(?P<hours>\d+\.\d+|\d*)H)?
-          (?:(?P<minutes>\d+\.\d+|\d*)M)?
-          (?:(?P<seconds>\d+\.\d+|\d*)S)?
-        """)
-    NATURAL_LANGUAGE_RE = re.compile(r"""(?x)
-        (?:(?P<weeks>\d+)\s*weeks?(?:,\s+)?)?
-        (?:(?P<days>\d+)\s*days?(?:,\s+)?)?
-        (?:(?P<hours>\d+)\s*hours?(?:,\s+)?)?
-        (?:(?P<minutes>\d+)\s*minutes?(?:,\s+)?)?
-        (?:(?P<seconds>\d+)\s*seconds?)?
-        """)
 
     mobj = ISO8601_DURATION_RE.fullmatch(cooldown) or NATURAL_LANGUAGE_RE.fullmatch(cooldown)
     if not mobj:

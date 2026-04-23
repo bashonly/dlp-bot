@@ -12,6 +12,9 @@ import bot.command.tools.variables
 import bot.command.update
 import bot.command.update.actions
 import bot.command.update.dependencies
+import bot.command.update.ejs
+import bot.command.update.protobug
+from bot import __version__
 
 
 def subcommand_name(module: types.ModuleType) -> str:
@@ -99,6 +102,11 @@ def _main():
         description='automated tools for the dlp org',
         # suggest_on_error=True,  # Python>=3.14
     )
+    root_parser.add_argument(
+        '--version',
+        action='version',
+        version=f'%(prog)s {__version__}',
+    )
     root_subparsers = root_parser.add_subparsers(
         title='subcommands',
         dest='_root_subcommand',
@@ -113,6 +121,8 @@ def _main():
     nested_map, nested_subparsers = _add_intermediate_subcmd(bot.command.update, parsers_map, root_subparsers)
     _add_final_subcmd(bot.command.update.actions, nested_map, nested_subparsers, aliases=['workflows'])
     _add_final_subcmd(bot.command.update.dependencies, nested_map, nested_subparsers, aliases=['deps'])
+    _add_final_subcmd(bot.command.update.ejs, nested_map, nested_subparsers)
+    _add_final_subcmd(bot.command.update.protobug, nested_map, nested_subparsers)
 
     nested_map, nested_subparsers = _add_intermediate_subcmd(bot.command.tools, parsers_map, root_subparsers)
     _add_final_subcmd(bot.command.tools.variables, nested_map, nested_subparsers)

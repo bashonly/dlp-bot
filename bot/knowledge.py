@@ -7,6 +7,8 @@ DEFAULT_HEAD_OWNER = 'dlp-bot'
 DEFAULT_HEAD_BRANCHES = {
     'actions': 'bot/update-actions',
     'dependencies': 'bot/update-dependencies',
+    'ejs': 'bot/update-ejs',
+    'protobug': 'bot/update-protobug',
 }
 
 SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {

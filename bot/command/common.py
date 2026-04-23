@@ -1,0 +1,242 @@
+from __future__ import annotations
+
+import argparse
+import os
+import pathlib
+import typing
+
+from bot.utils import parse_datetime_from_cooldown
+
+
+def configure_remote_target_options(
+    parser: argparse.ArgumentParser,
+    *,
+    default_head_label: str | None = None,
+    force_repository: str | None = None,
+) -> argparse._ArgumentGroup:
+    LABEL_METAVAR = 'OWNER[:REPO]:BRANCH'
+    group = parser.add_argument_group('remote target options')
+
+    head_help = f'label for the branch that the pull request should be created from, formatted as {LABEL_METAVAR}'
+    head_kwargs: dict[str, typing.Any] = {}
+    if default_head_label:
+        head_kwargs.update({
+            'default': default_head_label,
+            'help': f'{head_help}. (default: {default_head_label})',
+        })
+    else:
+        head_kwargs.update({
+            'required': True,
+            'help': f'{head_help}. (REQUIRED)',
+        })
+    group.add_argument(
+        '-H',
+        '--head',
+        dest='head_label',
+        metavar=LABEL_METAVAR,
+        **head_kwargs,
+    )
+
+    base_help = (
+        'label for the branch that the pull request should be merged into, formatted as {} .'
+        'if the REPO segment is not included, the REPO segment will default to {}. '
+        'if --base is not used, all segments will default to values that are hardcoded for {}'
+    ).format(
+        LABEL_METAVAR,
+        f'"{force_repository}"' if force_repository else 'the positional REPOSITORY argument',
+        f'"{force_repository}"' if force_repository else 'the given repository',
+    )
+    group.add_argument(
+        '-B',
+        '--base',
+        dest='base_label',
+        metavar=LABEL_METAVAR,
+        help=base_help,
+    )
+
+    return group
+
+
+def configure_update_options(
+    parser: argparse.ArgumentParser,
+    *,
+    add_verify: bool = False,
+    add_exclude_newer: bool = False,
+) -> argparse._ArgumentGroup:
+    group = parser.add_argument_group('update options')
+
+    group.add_argument(
+        '--clone',
+        dest='clone',
+        action='store_true',
+        help='create a fresh clone of the repository instead of using an existing local repo',
+    )
+    group.add_argument(
+        '--no-clone',
+        dest='clone',
+        action='store_false',
+        default=False,
+        help='do not clone the repository; operate on an existing local repo (default)',
+    )
+    group.add_argument(
+        '--pr',
+        dest='pr',
+        action='store_true',
+        help='create a pull request targeting the base branch and submit it to the base owner',
+    )
+    group.add_argument(
+        '--no-pr',
+        dest='pr',
+        action='store_false',
+        default=False,
+        help='do not create or submit a pull request (default)',
+    )
+
+    if add_verify:
+        group.add_argument(
+            '--verify',
+            dest='verify',
+            action='store_true',
+            help='only verify the previous update; do not generate a pull request body or create a PR',
+        )
+        group.add_argument(
+            '--no-verify',
+            dest='verify',
+            action='store_false',
+            default=False,
+            help='update normally instead of verifying the previous update (default)',
+        )
+
+    if add_exclude_newer:
+        group.add_argument(
+            '--exclude-newer',
+            metavar='COOLDOWN',
+            help=(
+                'exclude versions newer than COOLDOWN, which can be any of: '
+                'ISO8601 duration (e.g. "P7D"), '
+                'natural language duration (e.g. "7 days"), '
+                'ISO8601 timestamp (e.g. "2026-03-28T23:10:22Z"), '
+                'or a UNIX timestamp (seconds since the epoch). '
+                'an empty argument will set the current timestamp as the COOLDOWN value'
+            ),
+            type=parse_datetime_from_cooldown,
+        )
+
+    return group
+
+
+def configure_git_options(
+    parser: argparse.ArgumentParser,
+    *,
+    default_head_remote: str = 'origin',
+    default_base_remote: str = 'upstream',
+) -> argparse._ArgumentGroup:
+    group = parser.add_argument_group('git options')
+
+    group.add_argument(
+        '--git-protocol',
+        choices=['ssh', 'https'],
+        help=('protocol to use with git. one of "ssh" (default) or "https"'),
+    )
+    group.add_argument(
+        '--head-remote',
+        metavar='REMOTE',
+        default=default_head_remote,
+        help=f"name of the head repository's git remote in the local repository. (default: {default_head_remote})",
+    )
+    group.add_argument(
+        '--base-remote',
+        metavar='REMOTE',
+        default=default_base_remote,
+        help=f"name of the base repository's git remote in the local repository. (default: {default_base_remote})",
+    )
+
+    return group
+
+
+def configure_github_options(parser: argparse.ArgumentParser) -> argparse._ArgumentGroup:
+    group = parser.add_argument_group('github options')
+    group.add_argument(
+        '--github-token',
+        metavar='TOKEN',
+        default=os.getenv('GH_TOKEN'),
+        help=(
+            'GitHub API token (PAT, classic, GHA, etc) used to avoid being rate-limited '
+            'and to authenticate for git-pushes and pull request creation. '
+            'if this option is not used, the value of the GH_TOKEN environment '
+            'variable will be used (if it is set)'
+        ),
+    )
+
+    return group
+
+
+def configure_commit_options(
+    parser: argparse.ArgumentParser,
+    *,
+    add_commit_type: bool = False,
+) -> argparse._ArgumentGroup:
+    group = parser.add_argument_group('commit options')
+
+    group.add_argument(
+        '--commit-prefix',
+        metavar='PREFIX',
+        help=(
+            'prefix to add each to each commit subject line and to the pull request title. '
+            'defaults are hardcoded per repository'
+        ),
+    )
+    group.add_argument(
+        '--commit-addendum',
+        metavar='MESSAGE',
+        help='an addendum to add to each commit message. defaults are hardcoded per repository',
+    )
+
+    if add_commit_type:
+        group.add_argument(
+            '--commit-type',
+            choices=['bulk', 'incremental'],
+            help=(
+                'one of: '
+                '"bulk" (commit changes to the current branch after ALL updates), '
+                '"incremental" (commit changes to the current branch after EACH update). '
+                'defaults to "bulk" unless the --pr option is used, which defaults to "incremental"'
+            ),
+        )
+
+    return group
+
+
+def configure_export_options(parser: argparse.ArgumentParser) -> argparse._ArgumentGroup:
+    group = parser.add_argument_group('export options')
+    group.add_argument(
+        '--export-pr',
+        metavar='DIRPATH',
+        help=(
+            'if an output directory path is provided, then export '
+            'the pull request body and commit message to files in the given output directory'
+        ),
+        type=pathlib.Path,
+    )
+    group.add_argument(
+        '--export-patches',
+        metavar='DIRPATH',
+        help=(
+            'if an output directory path is provided, then export '
+            'the commit(s) to patch file(s) in the given output directory'
+        ),
+        type=pathlib.Path,
+    )
+
+    return group
+
+
+def configure_logging_options(parser: argparse.ArgumentParser) -> argparse._ArgumentGroup:
+    group = parser.add_argument_group('logging options')
+    group.add_argument(
+        '--verbose',
+        action='store_true',
+        help='print verbose debug output (e.g. for all git operations and network requests)',
+    )
+
+    return group

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections.abc
 import dataclasses
 import hashlib
 import io
@@ -16,7 +17,10 @@ from bot.deps.python import (
     package_diff_dict,
     parse_dependency,
 )
-from bot.utils import request
+from bot.utils import (
+    SuccessMessage,
+    request,
+)
 
 REQS_OUTPUT_TMPL = 'requirements-{}.txt'
 
@@ -218,7 +222,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         verify: bool,
     ):
         # Update Windows PyInstaller requirements; need to compare before & after .txt's for reporting
-        if not upgrade_only or upgrade_only.lower() == 'pyinstaller':
+        if not upgrade_only:
             info = self.gh.get_latest_release('yt-dlp', 'Pyinstaller-Builds')
             for target_suffix, asset_tag in PYINSTALLER_BUILDS_TARGETS.items():
                 asset_url = next(
@@ -297,7 +301,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         self.uv('lock', upgrade_arg, env=env)
         updated_paths.add(self.lockfile_path)
 
-    def update_ejs(self, /):
+    def update_ejs(self, /) -> set[pathlib.Path]:
         PACKAGE_NAME = 'yt-dlp-ejs'
         PREFIX = f'    "{PACKAGE_NAME}=='
         LIBRARY_NAME = PACKAGE_NAME.replace('-', '_')
@@ -325,10 +329,10 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         info = self.gh.get_latest_release('yt-dlp', 'ejs')
         version = info['tag_name']
         if version == current_version:
-            print(f'{PACKAGE_NAME} is up to date! ({version})', file=sys.stderr)
-            return
+            raise SuccessMessage(f'{PACKAGE_NAME} is up to date! ({version})')
 
         print(f'Updating {PACKAGE_NAME} from {current_version} to {version}', file=sys.stderr)
+        updated_paths = set()
         hashes = []
         wheel_info = {}
         for asset in info['assets']:
@@ -357,7 +361,9 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
             hashes.append(f'    {name!r}: {asset_hash!r},')
 
             if EJS_ASSETS[name]:
-                (PACKAGE_PATH / name).write_bytes(data)
+                asset_path = PACKAGE_PATH / name
+                asset_path.write_bytes(data)
+                updated_paths.add(asset_path)
 
         hash_mapping = '\n'.join(hashes)
         if missing_assets := [asset_name for asset_name in EJS_ASSETS if asset_name not in hash_mapping]:
@@ -366,23 +372,29 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         if missing_fields := [key for key in makefile_info if not wheel_info.get(key)]:
             raise ValueError(f'wheel info not found in release: {", ".join(missing_fields)}')
 
-        (PACKAGE_PATH / '_info.py').write_text(
+        vendored_info_path = PACKAGE_PATH / '_info.py'
+        vendored_info_path.write_text(
             EJS_TEMPLATE.format(
                 version=version,
                 hash_mapping=hash_mapping,
             ),
         )
+        updated_paths.add(vendored_info_path)
 
         content = self.load_pyproject_text()
         updated = content.replace(PREFIX + current_version, PREFIX + version)
         self.write_pyproject_text(updated)
+        updated_paths.add(self.pyproject_path)
 
         makefile = self._makefile_path.read_text()
         for key in wheel_info:
             makefile = makefile.replace(f'{key} = {makefile_info[key]}', f'{key} = {wheel_info[key]}')
         self._makefile_path.write_text(makefile)
+        updated_paths.add(self._makefile_path)
 
-    def update_protobug(self, /):
+        return updated_paths
+
+    def update_protobug(self, /) -> set[pathlib.Path]:
         PACKAGE_NAME = 'protobug'
         PREFIX = f'    "{PACKAGE_NAME}=='
         LIBRARY_NAME = PACKAGE_NAME.replace('-', '_')
@@ -409,10 +421,10 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         info = self.gh.get_latest_release('yt-dlp', 'protobug')
         version = info['tag_name']
         if version == current_version:
-            print(f'{PACKAGE_NAME} is up to date! ({version})', file=sys.stderr)
-            return
+            raise SuccessMessage(f'{PACKAGE_NAME} is up to date! ({version})')
 
         print(f'Updating {PACKAGE_NAME} from {current_version} to {version}', file=sys.stderr)
+        updated_paths = set()
         wheel_info = {}
         asset_info = next(
             asset
@@ -443,8 +455,18 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         content = self.load_pyproject_text()
         updated = content.replace(PREFIX + current_version, PREFIX + version)
         self.write_pyproject_text(updated)
+        updated_paths.add(self.pyproject_path)
 
         makefile = self._makefile_path.read_text()
         for key in wheel_info:
             makefile = makefile.replace(f'{key} = {makefile_info[key]}', f'{key} = {wheel_info[key]}')
         self._makefile_path.write_text(makefile)
+        updated_paths.add(self._makefile_path)
+
+        return updated_paths
+
+    def get_special_update_function(self, /, value: str) -> collections.abc.Callable:
+        return {
+            'protobug': self.update_protobug,
+            'yt-dlp-ejs': self.update_ejs,
+        }[value]

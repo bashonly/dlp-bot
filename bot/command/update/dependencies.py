@@ -13,10 +13,17 @@ import pathlib
 import sys
 import tempfile
 
-from bot.deps.python import (
-    PythonDependenciesUpdater,
-    PythonProject,
+from bot.command.common import (
+    configure_commit_options,
+    configure_export_options,
+    configure_git_options,
+    configure_github_options,
+    configure_logging_options,
+    configure_remote_target_options,
+    configure_update_options,
 )
+from bot.deps.dlp_bot import DLPBotDependenciesUpdater
+from bot.deps.python import PythonProject
 from bot.deps.yt_dlp import YTDLPDependenciesUpdater
 from bot.git import Git, GitError
 from bot.github import GitHubPullRequest, RelativeBranch
@@ -48,21 +55,41 @@ PROJECTS = {
 }
 
 UPDATERS = {
-    'dlp-bot': PythonDependenciesUpdater,
+    'dlp-bot': DLPBotDependenciesUpdater,
     # 'ejs': NodeDependenciesUpdater,
     'yt-dlp': YTDLPDependenciesUpdater,
 }
 
 assert all((repo in PROJECTS and repo in UPDATERS) for repo in SUPPORTED_REPOS)
 
+UPGRADE_ONLY_PACKAGES = ('protobug', 'yt-dlp-ejs')
 
-def configure_parser(parser: argparse.ArgumentParser):
-    parser.add_argument(
-        'repository',
-        metavar='REPOSITORY',
-        choices=SUPPORTED_REPOS,
-        help=f'name of the (upstream) repository. one of: {", ".join(SUPPORTED_REPOS)}',
-    )
+
+def configure_parser(
+    parser: argparse.ArgumentParser,
+    *,
+    force_repository: str | None = None,
+    upgrade_only: str | None = None,
+    default_head_label: str | None = None,
+):
+    if force_repository:
+        assert force_repository in SUPPORTED_REPOS, f'{force_repository!r} is not a supported repo'
+        # Only reached when another command uses this function w/ a truthy force_repository kwarg.
+        # Add a hidden option such that args.repository can only be the forced_repository value
+        parser.add_argument(
+            '--repository',
+            choices=[force_repository],
+            default=force_repository,
+            help=argparse.SUPPRESS,
+        )
+    else:
+        # Normal operation: add a required first positional argument
+        parser.add_argument(
+            'repository',
+            metavar='REPOSITORY',
+            choices=SUPPORTED_REPOS,
+            help=f'name of the (upstream) repository. one of: {", ".join(SUPPORTED_REPOS)}',
+        )
     # NB: Do not use type=pathlib.Path in arg parser since it would convert empty arg to Path('.')
     parser.add_argument(
         'directory',
@@ -74,133 +101,25 @@ def configure_parser(parser: argparse.ArgumentParser):
             'if not provided and --clone is used, it will default to a temporary directory'
         ),
     )
-    parser.add_argument(
-        '-B',
-        '--base',
-        dest='base_label',
-        metavar='OWNER[:REPO]:BRANCH',
-        help=(
-            'label for the branch that the pull request should be merged into, '
-            'formatted as {owner}[:{repo}]{branch}. if "repo" is not provided, '
-            'it will default to the value of the positional REPOSITORY argument. '
-            'if --base is not used, it will default to a value that is '
-            'hardcoded for the given repository'
-        ),
+    # Add common option groups
+    configure_remote_target_options(
+        parser,
+        default_head_label=default_head_label or DEFAULT_HEAD.label,
+        force_repository=force_repository,
     )
-    parser.add_argument(
-        '-H',
-        '--head',
-        dest='head_label',
-        default=DEFAULT_HEAD.label,
-        metavar='OWNER[:REPO]:BRANCH',
-        help=(
-            'label for the branch that the pull request should be created from, '
-            'formatted as {owner}[:{repo}]{branch}. if not provided, it will default to '
-            f'{DEFAULT_HEAD}'
-        ),
+    update_group = configure_update_options(parser, add_verify=True)
+    # Hidden option: only intended for use with `bot update ejs` or `bot update protobug`
+    update_group.add_argument(
+        '--upgrade-only',
+        choices=[upgrade_only] if upgrade_only else UPGRADE_ONLY_PACKAGES,
+        default=upgrade_only,
+        help=argparse.SUPPRESS,
     )
-    parser.add_argument(
-        '--clone',
-        dest='clone',
-        action='store_true',
-        help='create a fresh clone of the repository instead of using an existing local repo',
-    )
-    parser.add_argument(
-        '--no-clone',
-        dest='clone',
-        action='store_false',
-        default=False,
-        help='do not clone the repository; operate on an existing local repo (default)',
-    )
-    parser.add_argument(
-        '--verify',
-        dest='verify',
-        action='store_true',
-        help='only verify the previous update; do not generate a pull request body or create a PR',
-    )
-    parser.add_argument(
-        '--no-verify',
-        dest='verify',
-        action='store_false',
-        default=False,
-        help='update normally instead of verifying the previous update (default)',
-    )
-    parser.add_argument(
-        '--pr',
-        dest='pr',
-        action='store_true',
-        help='create a pull request targeting the base branch and submit it to the base owner',
-    )
-    parser.add_argument(
-        '--no-pr',
-        dest='pr',
-        action='store_false',
-        default=False,
-        help='do not create or submit a pull request (default)',
-    )
-    parser.add_argument(
-        '--head-remote',
-        metavar='REMOTE',
-        default='origin',
-        help=('name of the head repository\'s git remote in the local repository clone. (default: "origin")'),
-    )
-    parser.add_argument(
-        '--base-remote',
-        metavar='REMOTE',
-        default='upstream',
-        help=('name of the base repository\'s git remote in the local repository clone. (default: "upstream")'),
-    )
-    parser.add_argument(
-        '--github-token',
-        metavar='TOKEN',
-        default=os.getenv('GH_TOKEN'),
-        help=(
-            'GitHub token (PAT, classic, GHA, etc) used for API authentication. '
-            'if this option is not used, the value of the GH_TOKEN environment '
-            'variable will be used (if it is set)'
-        ),
-    )
-    parser.add_argument(
-        '--git-protocol',
-        choices=['ssh', 'https'],
-        help=('protocol to use with git. one of "ssh" (default) or "https"'),
-    )
-    parser.add_argument(
-        '--export-pr',
-        metavar='DIRPATH',
-        help=(
-            'if an output directory path is provided, then export '
-            'the pull request body and commit message to files in the given output directory'
-        ),
-        type=pathlib.Path,
-    )
-    parser.add_argument(
-        '--export-patches',
-        metavar='DIRPATH',
-        help=(
-            'if an output directory path is provided, then export '
-            'the commit(s) to patch file(s) in the given output directory'
-        ),
-        type=pathlib.Path,
-    )
-    parser.add_argument(
-        '--commit-prefix',
-        metavar='PREFIX',
-        help=(
-            'prefix to add each to each commit subject line and to the pull request title. '
-            'defaults are hardcoded per repository'
-        ),
-    )
-    parser.add_argument(
-        '--commit-addendum',
-        metavar='MESSAGE',
-        help='an addendum to add to each commit message. defaults are hardcoded per repository',
-    )
-    parser.add_argument(
-        '--verbose',
-        action='store_true',
-        help='print verbose debug output (for all network requests)',
-    )
+    configure_git_options(parser)
+    configure_github_options(parser)
+    configure_commit_options(parser)
+    configure_export_options(parser)
+    configure_logging_options(parser)
 
 
 def print_table(all_updates):  # TODO: typing
@@ -251,10 +170,26 @@ def _real_run(args: argparse.Namespace):
     git.bot_overwrite_branch(pr.head.branch, f'{args.base_remote}/{pr.base.branch}')
     starting_point = git.bot_rev_parse('HEAD')
 
-    project = PROJECTS[args.repository](repo_path, verbose=args.verbose)
-    updater = UPDATERS[args.repository](project, pr.api)
+    project = PROJECTS[args.repository](
+        repo_path,
+        verbose=args.verbose,
+    )
+    updater = UPDATERS[args.repository](
+        project,
+        gh=pr.api,
+    )
 
-    updated_paths, all_updates = updater.update(verify=args.verify)
+    special_updated_paths = set()
+    if args.upgrade_only is not None:
+        special_updated_paths = updater.get_special_update_function(args.upgrade_only)()
+
+    updated_paths, all_updates = updater.update(
+        upgrade_only=args.upgrade_only,
+        verify=args.verify,
+    )
+
+    updated_paths |= special_updated_paths
+
     if not all_updates:
         raise SuccessMessage('All dependencies are up-to-date')
     elif args.verify:

@@ -310,8 +310,10 @@ class PythonProject(Project):
         project_path: pathlib.Path,
         *,
         verbose: bool = False,
+        **kwargs,
     ):
-        super().__init__(project_path=project_path, verbose=verbose)
+        super().__init__(project_path=project_path, **kwargs)
+        self.verbose = verbose
 
         uv_location = shutil.which('uv')
         if not uv_location:
@@ -466,9 +468,12 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         self,
         /,
         project: PythonProject,
+        *,
         gh: GitHubAPICaller,
+        **kwargs,
     ):
-        super().__init__(project=project, gh=gh)
+        super().__init__(project, **kwargs)
+        self.gh = gh
         self.project_path = self.project.project_path
         self.pyproject_path = self.project.pyproject_path
         self.lockfile_path = self.project.lockfile_path
@@ -528,6 +533,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         *,
         upgrade_only: str | None = None,
         verify: bool = False,
+        **kwargs,
     ) -> tuple[set[pathlib.Path], PythonUpdateResult]:
         # Stash original lockfile for package diff-ing post-update
         og_lockfile_toml = self.parse_lockfile_toml(refresh=True)
@@ -702,6 +708,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         *,
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
+        **kwargs,
     ) -> tuple[str, str]:
         """Returns a tuple of the pull request description and the merge commit message"""
 

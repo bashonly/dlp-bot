@@ -24,11 +24,11 @@ dynamic = ["version"]
 dependencies = []
 
 [project.optional-dependencies]
-actions = [
+update-actions = [
     "pyyaml~=6.0.0",
 ]
-deps = [
-    "uv",
+update-dependencies = [
+    "uv>=0.9.27",
 ]
 
 [dependency-groups]
