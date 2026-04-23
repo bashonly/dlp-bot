@@ -257,22 +257,24 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
 
         # Export bundle requirements; any updates to these are already recorded w/ uv.lock package diff
         for target_suffix, target in BUNDLE_TARGETS.items():
+            requirements_path = self._requirements_path / REQS_OUTPUT_TMPL.format(target_suffix)
             self.uv_export(
                 extras=target.extras,
                 groups=target.groups,
                 prune_packages=target.prune_packages,
                 omit_packages=target.omit_packages,
-                output_file=self._requirements_path / REQS_OUTPUT_TMPL.format(target_suffix),
+                output_file=requirements_path,
             )
-            updated_paths.add(self._requirements_path / REQS_OUTPUT_TMPL.format(target_suffix))
+            updated_paths.add(requirements_path)
 
         # Export group requirements; any updates to these are already recorded w/ uv.lock package diff
         for group in EXPORT_GROUPS:
+            requirements_path = self._requirements_path / REQS_OUTPUT_TMPL.format(group)
             self.uv_export(
                 groups=[group],
-                output_file=self._requirements_path / REQS_OUTPUT_TMPL.format(group),
+                output_file=requirements_path,
             )
-            updated_paths.add(self._requirements_path / REQS_OUTPUT_TMPL.format(group))
+            updated_paths.add(requirements_path)
 
         # Compile requirements for single packages; need to compare before & after .txt's for reporting
         for package in COMPILE_PACKAGES:
