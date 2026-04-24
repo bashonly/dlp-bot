@@ -234,12 +234,15 @@ def _real_run(args: argparse.Namespace):
     if args.export_patches:
         git.bot_patches(starting_point, args.export_patches)
 
-    if args.export_pr:
-        args.export_pr.mkdir(parents=True, exist_ok=True)
-        (args.export_pr / 'pull-request.dependencies.md').write_text(pr.body)
-        (args.export_pr / 'commit-message.dependencies.txt').write_text(pr.commit_message)
-    else:
-        print_table(all_updates)
+    if args.export_pr_body:
+        args.export_pr_body.parent.mkdir(parents=True, exist_ok=True)
+        args.export_pr_body.with_suffix('.md').write_text(pr.body)
+
+    if args.export_commit_message:
+        args.export_commit_message.parent.mkdir(parents=True, exist_ok=True)
+        args.export_commit_message.with_suffix('.txt').write_text(pr.commit_message)
+
+    print_table(all_updates)
 
 
 def run(args: argparse.Namespace) -> int:

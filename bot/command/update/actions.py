@@ -197,12 +197,15 @@ def _real_run(args: argparse.Namespace):
 
         raise SuccessMessage(pr.info['html_url'])
 
-    if args.export_pr:
-        args.export_pr.mkdir(parents=True, exist_ok=True)
-        (args.export_pr / 'pull-request.actions.md').write_text(pr.body)
-        (args.export_pr / 'commit-message.actions.txt').write_text(pr.commit_message)
-    else:
-        print_table(all_updates)
+    if args.export_pr_body:
+        args.export_pr_body.parent.mkdir(parents=True, exist_ok=True)
+        args.export_pr_body.with_suffix('.md').write_text(pr.body)
+
+    if args.export_commit_message:
+        args.export_commit_message.parent.mkdir(parents=True, exist_ok=True)
+        args.export_commit_message.with_suffix('.txt').write_text(pr.commit_message)
+
+    print_table(all_updates)
 
 
 def run(args: argparse.Namespace) -> int:

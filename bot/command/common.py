@@ -220,12 +220,15 @@ def configure_commit_options(
 def configure_export_options(parser: argparse.ArgumentParser) -> argparse._ArgumentGroup:
     group = parser.add_argument_group('export options')
     group.add_argument(
-        '--export-pr',
-        metavar='DIRPATH',
-        help=(
-            'if an output directory path is provided, then export '
-            'the pull request body and commit message to files in the given output directory'
-        ),
+        '--export-pr-body',
+        metavar='FILEPATH',
+        help='if an output filepath is provided, then export the pull request body as a markdown file',
+        type=pathlib.Path,
+    )
+    group.add_argument(
+        '--export-commit-message',
+        metavar='FILEPATH',
+        help='if an output filepath is provided, then export the commit message to a text file',
         type=pathlib.Path,
     )
     group.add_argument(
