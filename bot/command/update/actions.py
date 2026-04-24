@@ -34,10 +34,14 @@ from bot.knowledge import (
 from bot.utils import (
     BotError,
     SuccessMessage,
+    VerificationError,
     safe_format,
     table_a_raza,
 )
-from bot.workflows import ActionsUpdater
+from bot.workflows import (
+    ActionsUpdater,
+    ActionsUpdateResult,
+)
 
 try:
     import yaml
@@ -83,6 +87,14 @@ def configure_parser(parser: argparse.ArgumentParser):
     configure_logging_options(parser)
 
 
+def print_table(all_updates: ActionsUpdateResult):
+    for row in table_a_raza(
+        ('action', 'old', 'new'),
+        [(f'{action.owner}/{action.repo}', old.tag, new.tag) for action, (old, new) in all_updates.items()],
+    ):
+        print(row)
+
+
 def _real_run(args: argparse.Namespace):
     if yaml is None:
         raise ImportError(
@@ -117,17 +129,28 @@ def _real_run(args: argparse.Namespace):
 
     if args.clone:
         git.bot_clone_upstream_here(GIT_FORGE, pr.base.owner, pr.base.repo)
-    elif not git.bot_working_tree_is_clean():
-        raise GitError('manual intervention needed; git working tree is unclean')
+    elif not args.verify_current_worktree and not git.bot_working_tree_is_clean():
+        raise GitError('manual intervention needed; git current worktree is unclean')
 
-    # upstream
-    git.bot_add_or_verify_remote(args.base_remote, GIT_FORGE, pr.base.owner, pr.base.repo)
-    if args.pr:
-        # we only interact with the origin remote if a pull request is being created
+    if not args.verify_head_branch and not args.verify_current_worktree:
+        # We need to add the "upstream" / base remote or else verify it exists w/correct URL
+        # (unless we are only verifying a head branch's work or the current local worktree)
+        git.bot_add_or_verify_remote(args.base_remote, GIT_FORGE, pr.base.owner, pr.base.repo)
+
+    if args.pr or args.verify_head_branch:
+        # We need to add the "origin" / head remote or else verify it already exists w/correct URL:
+        # - If creating a pull request (--pr), we'll push to this remote later
+        # - If verifying a pull request's update (--verify--head-branch), we'll pull from this remote
         git.bot_add_or_verify_remote(args.head_remote, GIT_FORGE, pr.head.owner, pr.head.repo)
 
-    git.bot_fetch_upstream()
-    git.bot_overwrite_branch(pr.head.branch, f'{args.base_remote}/{pr.base.branch}')
+    if args.verify_head_branch:
+        # Pull from "origin" / head branch so we can verify what was already committed/pushed
+        git.bot_fetch_origin()
+        git.bot_overwrite_branch(pr.head.branch, f'{args.head_remote}/{pr.head.branch}')
+    elif not args.verify_current_worktree:
+        # Pull from "upstream" / base branch so that our changes will cleanly merge
+        git.bot_fetch_upstream()
+        git.bot_overwrite_branch(pr.head.branch, f'{args.base_remote}/{pr.base.branch}')
 
     updater = ActionsUpdater.from_git_and_pr(
         git=git,
@@ -142,10 +165,14 @@ def _real_run(args: argparse.Namespace):
         export_patches=args.export_patches,
         commit_prefix=args.commit_prefix or repo_info['commit_prefix'],
         commit_addendum=formatted_addendum,
+        verify=args.verify_head_branch or args.verify_current_worktree,
     )
 
     if not all_updates:
         raise SuccessMessage('All actions & workflows are up-to-date')
+    elif args.verify_head_branch or args.verify_current_worktree:
+        print_table(all_updates)
+        raise VerificationError('Update verification failed')
 
     pull_request_body, merge_commit_message = updater.parse_results(
         workflows,
@@ -175,11 +202,7 @@ def _real_run(args: argparse.Namespace):
         (args.export_pr / 'pull-request.actions.md').write_text(pr.body)
         (args.export_pr / 'commit-message.actions.txt').write_text(pr.commit_message)
     else:
-        for row in table_a_raza(
-            ('action', 'old', 'new'),
-            [(f'{action.owner}/{action.repo}', old.tag, new.tag) for action, (old, new) in all_updates.items()],
-        ):
-            print(row)
+        print_table(all_updates)
 
 
 def run(args: argparse.Namespace) -> int:

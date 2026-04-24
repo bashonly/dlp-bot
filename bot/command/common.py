@@ -8,6 +8,17 @@ import typing
 from bot.utils import parse_datetime_from_cooldown
 
 
+def boolean_that_negates_others_when_true(*dests_to_negate):
+    class _BooleanNegateAction(argparse.BooleanOptionalAction):
+        def __call__(self, parser, namespace, values, option_string=None):
+            super().__call__(parser, namespace, values, option_string=option_string)
+            if getattr(namespace, self.dest, None) is True:
+                for dest_to_negate in dests_to_negate:
+                    setattr(namespace, dest_to_negate, False)
+
+    return _BooleanNegateAction
+
+
 def configure_remote_target_options(
     parser: argparse.ArgumentParser,
     *,
@@ -60,7 +71,6 @@ def configure_remote_target_options(
 def configure_update_options(
     parser: argparse.ArgumentParser,
     *,
-    add_verify: bool = False,
     add_exclude_newer: bool = False,
 ) -> argparse._ArgumentGroup:
     group = parser.add_argument_group('update options')
@@ -68,44 +78,44 @@ def configure_update_options(
     group.add_argument(
         '--clone',
         dest='clone',
-        action='store_true',
-        help='create a fresh clone of the repository instead of using an existing local repo',
-    )
-    group.add_argument(
-        '--no-clone',
-        dest='clone',
-        action='store_false',
         default=False,
-        help='do not clone the repository; operate on an existing local repo (default)',
+        action=boolean_that_negates_others_when_true('verify_current_worktree'),
+        help=(
+            'whether to create a fresh clone of the repository instead of using an existing local repo '
+            '(default: --no-clone) (--clone implies: --no-verify-current-worktree)'
+        ),
     )
     group.add_argument(
         '--pr',
         dest='pr',
-        action='store_true',
-        help='create a pull request targeting the base branch and submit it to the base owner',
+        default=False,
+        action=boolean_that_negates_others_when_true('verify_head_branch', 'verify_current_worktree'),
+        help=(
+            'whether to create a pull request targeting the base branch & submit it to the base owner '
+            '(default: --no-pr) (--pr implies: --no-verify-head-branch --no-verify-current-worktree)'
+        ),
     )
     group.add_argument(
-        '--no-pr',
-        dest='pr',
-        action='store_false',
+        '--verify-head-branch',
+        dest='verify_head_branch',
         default=False,
-        help='do not create or submit a pull request (default)',
+        action=boolean_that_negates_others_when_true('pr', 'verify_current_worktree'),
+        help=(
+            'whether to only verify the previous update that was committed/pushed to the head branch'
+            '(default: --no-verify-head-branch) (--verify-head-branch implies: --no-pr --no-verify-current-worktree)'
+        ),
     )
-
-    if add_verify:
-        group.add_argument(
-            '--verify',
-            dest='verify',
-            action='store_true',
-            help='only verify the previous update; do not generate a pull request body or create a PR',
-        )
-        group.add_argument(
-            '--no-verify',
-            dest='verify',
-            action='store_false',
-            default=False,
-            help='update normally instead of verifying the previous update (default)',
-        )
+    group.add_argument(
+        '--verify-current-worktree',
+        dest='verify_current_worktree',
+        default=False,
+        action=boolean_that_negates_others_when_true('clone', 'pr', 'verify_head_branch'),
+        help=(
+            'whether to only verify the previous update made to the local current worktree '
+            '(default: --no-verify-current-worktree) '
+            '(--verify-current-worktree implies: --no-clone --no-pr --no-verify-head-branch)'
+        ),
+    )
 
     if add_exclude_newer:
         group.add_argument(
@@ -235,8 +245,13 @@ def configure_logging_options(parser: argparse.ArgumentParser) -> argparse._Argu
     group = parser.add_argument_group('logging options')
     group.add_argument(
         '--verbose',
-        action='store_true',
-        help='print verbose debug output (e.g. for all git operations and network requests)',
+        dest='verbose',
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help=(
+            'whether to print verbose debug output, e.g. for all subprocess calls and network requests '
+            '(default: --no-verbose)'
+        ),
     )
 
     return group

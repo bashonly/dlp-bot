@@ -513,8 +513,8 @@ class PythonDependenciesUpdater(DependenciesUpdater):
 
         return None
 
-    def _get_verify_env(self, /, verify: bool, upgrade_only: str | None) -> dict[str, str] | None:
-        if not verify or not upgrade_only or upgrade_only not in self.get_exclude_newer_packages():
+    def _get_environment(self, /, verify: bool, upgrade_only: str | None) -> dict[str, str] | None:
+        if not verify and not upgrade_only:
             return None
 
         # If only verifying or only upgrading packages that are cooldown-exempt,
@@ -542,7 +542,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
 
         pre_upgrade_data = self._pre_upgrade(updated_paths, upgrade_only=upgrade_only, verify=verify)
 
-        env = self._get_verify_env(verify=verify, upgrade_only=upgrade_only)
+        env = self._get_environment(verify=verify, upgrade_only=upgrade_only)
 
         # Upgrade packages in lockfile
         upgrade_arg = f'--upgrade-package={upgrade_only}' if upgrade_only else '--upgrade'

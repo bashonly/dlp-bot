@@ -492,7 +492,7 @@ class ActionsUpdater:
 
         latest_tag, latest_sha = self.get_tag_and_sha_from_release(action.owner, action.repo, latest_release)
 
-        # Sanity check
+        # For verification
         if latest_tag not in self.web.fetch_branch_commits(action.owner, action.repo, latest_sha)['tags']:
             raise ActionError(f'SHA not found in {action}: {latest_sha}')
 
@@ -518,8 +518,9 @@ class ActionsUpdater:
         export_patches: str | pathlib.Path | None = None,
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
+        verify: bool = False,
     ) -> tuple[list[Workflow], ActionsUpdateResult]:
-        if commit_type not in ('bulk', 'incremental'):
+        if commit_type not in (None, 'bulk', 'incremental'):
             raise ValueError(f'invalid commit_type value: {commit_type}')
 
         starting_point = self.git.bot_rev_parse('HEAD')
@@ -568,7 +569,8 @@ class ActionsUpdater:
                 commit_msg = make_incremental_commit_message(
                     action, old, new, prefix=commit_prefix, addendum=commit_addendum
                 )
-                self.git.bot_commit(commit_msg, updated_paths)
+                if not verify:
+                    self.git.bot_commit(commit_msg, updated_paths)
                 updated_paths.clear()
 
         else:  # Minimize I/O for bulk commit
@@ -587,9 +589,10 @@ class ActionsUpdater:
             commit_msg = make_bulk_commit_message(
                 workflows, all_updates, prefix=commit_prefix, addendum=commit_addendum
             )
-            self.git.bot_commit(commit_msg, updated_paths)
+            if not verify:
+                self.git.bot_commit(commit_msg, updated_paths)
 
-        if export_patches:
+        if export_patches and not verify:
             self.git.bot_patches(starting_point, export_patches)
 
         return workflows, all_updates

@@ -23,7 +23,10 @@ from bot.command.common import (
     configure_update_options,
 )
 from bot.deps.dlp_bot import DLPBotDependenciesUpdater
-from bot.deps.python import PythonProject
+from bot.deps.python import (
+    PythonProject,
+    PythonUpdateResult,
+)
 from bot.deps.yt_dlp import YTDLPDependenciesUpdater
 from bot.git import Git, GitError
 from bot.github import GitHubPullRequest, RelativeBranch
@@ -107,7 +110,7 @@ def configure_parser(
         default_head_label=default_head_label or DEFAULT_HEAD.label,
         force_repository=force_repository,
     )
-    update_group = configure_update_options(parser, add_verify=True)
+    update_group = configure_update_options(parser)
     # Hidden option: only intended for use with `bot update ejs` or `bot update protobug`
     update_group.add_argument(
         '--upgrade-only',
@@ -122,7 +125,7 @@ def configure_parser(
     configure_logging_options(parser)
 
 
-def print_table(all_updates):  # TODO: typing
+def print_table(all_updates: PythonUpdateResult):
     for row in table_a_raza(
         ('package', 'old', 'new'), [(package, old or '', new or '') for package, (old, new) in all_updates.items()]
     ):
@@ -157,17 +160,29 @@ def _real_run(args: argparse.Namespace):
 
     if args.clone:
         git.bot_clone_upstream_here(GIT_FORGE, pr.base.owner, pr.base.repo)
-    elif not git.bot_working_tree_is_clean():
-        raise GitError('manual intervention needed; git working tree is unclean')
+    elif not args.verify_current_worktree and not git.bot_working_tree_is_clean():
+        raise GitError('manual intervention needed; git current worktree is unclean')
 
-    # upstream
-    git.bot_add_or_verify_remote(args.base_remote, GIT_FORGE, pr.base.owner, pr.base.repo)
-    if args.pr and not args.verify:
-        # we only interact with the origin remote if a pull request is being created
+    if not args.verify_head_branch and not args.verify_current_worktree:
+        # We need to add the "upstream" / base remote or else verify it exists w/correct URL
+        # (unless we are only verifying a head branch's work or the current local worktree)
+        git.bot_add_or_verify_remote(args.base_remote, GIT_FORGE, pr.base.owner, pr.base.repo)
+
+    if args.pr or args.verify_head_branch:
+        # We need to add the "origin" / head remote or else verify it already exists w/correct URL:
+        # - If creating a pull request (--pr), we'll push to this remote later
+        # - If verifying a pull request's update (--verify--head-branch), we'll pull from this remote
         git.bot_add_or_verify_remote(args.head_remote, GIT_FORGE, pr.head.owner, pr.head.repo)
 
-    git.bot_fetch_upstream()
-    git.bot_overwrite_branch(pr.head.branch, f'{args.base_remote}/{pr.base.branch}')
+    if args.verify_head_branch:
+        # Pull from "origin" / head branch so we can verify what was already committed/pushed
+        git.bot_fetch_origin()
+        git.bot_overwrite_branch(pr.head.branch, f'{args.head_remote}/{pr.head.branch}')
+    elif not args.verify_current_worktree:
+        # Pull from "upstream" / base branch so that our changes will cleanly merge
+        git.bot_fetch_upstream()
+        git.bot_overwrite_branch(pr.head.branch, f'{args.base_remote}/{pr.base.branch}')
+
     starting_point = git.bot_rev_parse('HEAD')
 
     project = PROJECTS[args.repository](
@@ -181,11 +196,11 @@ def _real_run(args: argparse.Namespace):
 
     updated_paths, all_updates = updater.update(
         upgrade_only=args.upgrade_only,
-        verify=args.verify,
+        verify=args.verify_head_branch or args.verify_current_worktree,
     )
     if not all_updates:
         raise SuccessMessage('All dependencies are up-to-date')
-    elif args.verify:
+    elif args.verify_head_branch or args.verify_current_worktree:
         print_table(all_updates)
         raise VerificationError('Update verification failed')
 
