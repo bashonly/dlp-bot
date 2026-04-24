@@ -683,7 +683,8 @@ class PythonDependenciesUpdater(DependenciesUpdater):
                     compare = f'[`{old_tag}...{new_tag}`](<{github_url}/compare/{old_tag}...{new_tag}>)'
 
             yield ' | '.join((
-                f'[**`{package}`**](<https://pypi.org/project/{package}>)',
+                # Strip the bracketed tag from package in the URL (e.g. pyinstaller[win32])
+                f'[**`{package}`**](<https://pypi.org/project/{package.split("[")[0]}/>)',
                 md_old,
                 md_new,
                 compare,
