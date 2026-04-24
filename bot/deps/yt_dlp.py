@@ -233,9 +233,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         if not upgrade_only:
             info = self.gh.get_latest_release('yt-dlp', 'Pyinstaller-Builds')
             for target_suffix, asset_tag in PYINSTALLER_BUILDS_TARGETS.items():
-                asset_url = next(
-                    asset['browser_download_url'] for asset in info['assets'] if asset_tag in asset['name']
-                )
+                asset_info = next(asset for asset in info['assets'] if asset_tag in asset['name'])
 
                 requirements_path = self._requirements_path / REQS_OUTPUT_TMPL.format(target_suffix)
                 if requirements_path.is_file():
@@ -245,12 +243,18 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
 
                 self.uv_pip_compile(
                     upgrade_arg,
-                    input_line=f'pyinstaller @ {asset_url}',
+                    input_line=f'pyinstaller @ {asset_info["browser_download_url"]}',
                     env=env,
                     output_file=requirements_path,
                 )
+                new_requirements_txt = requirements_path.read_text()
+                if asset_info['digest'] not in new_requirements_txt:
+                    raise ValueError(
+                        f'expected pyinstaller wheel hash {asset_info["digest"]} not found in {requirements_path}'
+                    )
+
                 updated_paths.add(requirements_path)
-                diff_dict = evaluate_requirements_txt(old_requirements_txt, requirements_path.read_text())
+                diff_dict = evaluate_requirements_txt(old_requirements_txt, new_requirements_txt)
                 if pyinstaller_diff := diff_dict.get('pyinstaller'):
                     # NB: this depends on 'pyinstaller[asset_tag]' keys in bot.knowledge.PYTHON_PACKAGES
                     all_updates.update({f'pyinstaller[{asset_tag}]': pyinstaller_diff})
