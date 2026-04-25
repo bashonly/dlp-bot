@@ -8,7 +8,7 @@ import typing
 from bot.utils import parse_datetime_from_cooldown
 
 
-def boolean_that_negates_others_when_true(*dests_to_negate):
+def boolean_if_true_negates_others(*dests_to_negate):
     class _BooleanNegateAction(argparse.BooleanOptionalAction):
         def __call__(self, parser, namespace, values, option_string=None):
             super().__call__(parser, namespace, values, option_string=option_string)
@@ -79,7 +79,7 @@ def configure_update_options(
         '--clone',
         dest='clone',
         default=False,
-        action=boolean_that_negates_others_when_true('verify_current_worktree'),
+        action=boolean_if_true_negates_others('verify_current_worktree'),
         help=(
             'whether to create a fresh clone of the repository instead of using an existing local repo '
             '(default: --no-clone) (--clone implies: --no-verify-current-worktree)'
@@ -89,7 +89,7 @@ def configure_update_options(
         '--pr',
         dest='pr',
         default=False,
-        action=boolean_that_negates_others_when_true('verify_head_branch', 'verify_current_worktree'),
+        action=boolean_if_true_negates_others('verify_head_branch', 'verify_current_worktree'),
         help=(
             'whether to create a pull request targeting the base branch & submit it to the base owner '
             '(default: --no-pr) (--pr implies: --no-verify-head-branch --no-verify-current-worktree)'
@@ -99,7 +99,7 @@ def configure_update_options(
         '--verify-head-branch',
         dest='verify_head_branch',
         default=False,
-        action=boolean_that_negates_others_when_true('pr', 'verify_current_worktree'),
+        action=boolean_if_true_negates_others('pr', 'verify_current_worktree'),
         help=(
             'whether to only verify the previous update that was committed/pushed to the head branch'
             '(default: --no-verify-head-branch) (--verify-head-branch implies: --no-pr --no-verify-current-worktree)'
@@ -109,7 +109,7 @@ def configure_update_options(
         '--verify-current-worktree',
         dest='verify_current_worktree',
         default=False,
-        action=boolean_that_negates_others_when_true('clone', 'pr', 'verify_head_branch'),
+        action=boolean_if_true_negates_others('clone', 'pr', 'verify_head_branch'),
         help=(
             'whether to only verify the previous update made to the local current worktree '
             '(default: --no-verify-current-worktree) '
