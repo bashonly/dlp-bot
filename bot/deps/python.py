@@ -42,7 +42,7 @@ class PyPIError(BotError):
     pass
 
 
-class PythonProjectError(BotError):
+class PythonPackagingError(BotError):
     pass
 
 
@@ -143,7 +143,7 @@ def parse_version_from_dist(filename: str, name: str) -> str:
     if mobj := re.fullmatch(rf'{normalized_name}-(?P<version>[^-]+)(?:-.+\.whl|\.tar\.gz)', filename):
         return mobj.group('version')
 
-    raise ValueError(f'unable to parse version from distribution filename: {filename}')
+    raise PythonPackagingError(f'unable to parse version from distribution filename: {filename}')
 
 
 def parse_dependency(line: str) -> PythonDependency:
@@ -153,7 +153,7 @@ def parse_dependency(line: str) -> PythonDependency:
     line = line.rstrip().removesuffix('\\')
     mobj = NAME_RE.match(line)
     if not mobj:
-        raise ValueError(f'unable to parse PythonDependency.name from line:\n    {line}')
+        raise PythonPackagingError(f'unable to parse PythonDependency.name from line:\n    {line}')
 
     name = mobj.group('name')
     rest = line[len(name) :].lstrip()
@@ -171,7 +171,7 @@ def parse_dependency(line: str) -> PythonDependency:
             exact_version = parse_version_from_dist(filename, name)
 
     if not exact_version:
-        raise ValueError(f'unable to parse PythonDependency.exact_version from line:\n    {line}')
+        raise PythonPackagingError(f'unable to parse PythonDependency.exact_version from line:\n    {line}')
 
     return PythonDependency(
         name=name,

@@ -23,6 +23,7 @@ from bot.knowledge import (
 from bot.utils import (
     SHA_PATTERN,
     BotError,
+    VerificationError,
     is_sha,
     parse_owner_and_repo,
 )
@@ -494,7 +495,7 @@ class ActionsUpdater:
 
         # For verification
         if latest_tag not in self.web.fetch_branch_commits(action.owner, action.repo, latest_sha)['tags']:
-            raise ActionError(f'SHA not found in {action}: {latest_sha}')
+            raise VerificationError(f'SHA not found in {action}: {latest_sha}')
 
         # temporary actionlint hack
         if action == ACTIONLINT_ACTION:

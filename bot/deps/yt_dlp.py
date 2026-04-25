@@ -18,6 +18,7 @@ from bot.deps.python import (
 )
 from bot.utils import (
     SuccessMessage,
+    VerificationError,
     request,
 )
 
@@ -249,7 +250,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
                 )
                 new_requirements_txt = requirements_path.read_text()
                 if asset_info['digest'] not in new_requirements_txt:
-                    raise ValueError(
+                    raise VerificationError(
                         f'expected pyinstaller wheel hash {asset_info["digest"]} not found in {requirements_path}'
                     )
 
@@ -364,7 +365,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
             algo, _, expected = digest.partition(':')
             hexdigest = hashlib.new(algo, data).hexdigest()
             if hexdigest != expected:
-                raise ValueError(f'downloaded attest mismatch ({hexdigest!r} != {expected!r})')
+                raise VerificationError(f'downloaded attest mismatch ({hexdigest!r} != {expected!r})')
 
             if is_wheel:
                 wheel_info = ejs_makefile_variables(version=version, name=name, digest=digest, data=data)
@@ -454,7 +455,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         algo, _, expected = digest.partition(':')
         hexdigest = hashlib.new(algo, data).hexdigest()
         if hexdigest != expected:
-            raise ValueError(f'downloaded attest mismatch ({hexdigest!r} != {expected!r})')
+            raise VerificationError(f'downloaded attest mismatch ({hexdigest!r} != {expected!r})')
 
         wheel_info = protobug_makefile_variables(
             version=version,
