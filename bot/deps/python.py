@@ -325,8 +325,6 @@ class PythonProject(Project):
         self._uv_base_args: list[str] = [f'--directory={self.project_path}']
 
         self.pyproject_path = self.project_path / 'pyproject.toml'
-        self._pyproject_text: str | None = None
-
         self.lockfile_path = self.project_path / 'uv.lock'
 
     def load_lockfile_toml(self, /) -> dict[str, typing.Any]:
@@ -336,32 +334,9 @@ class PythonProject(Project):
         with self.lockfile_path.open('rb') as f:
             return tomllib.load(f)
 
-    def load_pyproject_text(self, /, *, refresh: bool = False) -> str:
-        if refresh or self._pyproject_text is None:
-            self._pyproject_text = self.pyproject_path.read_text(encoding='utf-8')
-
-        return self._pyproject_text
-
-    def parse_pyproject_toml(self, /, *, refresh: bool = False) -> dict[str, typing.Any]:
-        return tomllib.loads(self.load_pyproject_text(refresh=refresh))
-
-    def write_pyproject_text(self, /, pyproject_text: str):
-        # invalidate cached pyproject
-        self._pyproject_text = None
-        self.pyproject_path.write_text(pyproject_text)
-
-    def replace_pyproject_toml_table_and_write(
-        self,
-        /,
-        pyproject_text: str,
-        table_name: str,
-        table_dict: PyprojectTable,
-    ):
-        # invalidate cached pyproject
-        self._pyproject_text = None
-
-        with self.pyproject_path.open(mode='w') as f:
-            f.writelines(replace_toml_table_text(pyproject_text, table_name, table_dict))
+    def load_pyproject_toml(self, /) -> dict[str, typing.Any]:
+        with self.pyproject_path.open('rb') as f:
+            return tomllib.load(f)
 
     def uv(
         self,
@@ -467,14 +442,22 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         self.uv = self.project.uv
         self.uv_export = self.project.uv_export
         self.uv_pip_compile = self.project.uv_pip_compile
-        self.load_pyproject_text = self.project.load_pyproject_text
-        self.parse_pyproject_toml = self.project.parse_pyproject_toml
+        self.load_pyproject_toml = self.project.load_pyproject_toml
         self.load_lockfile_toml = self.project.load_lockfile_toml
-        self.write_pyproject_text = self.project.write_pyproject_text
-        self.replace_pyproject_toml_table_and_write = self.project.replace_pyproject_toml_table_and_write
+
+    def replace_pyproject_toml_table_and_write(
+        self,
+        /,
+        table_name: str,
+        table_dict: PyprojectTable,
+    ):
+        pyproject_text = self.pyproject_path.read_text()
+
+        with self.pyproject_path.open(mode='w') as f:
+            f.writelines(replace_toml_table_text(pyproject_text, table_name, table_dict))
 
     def get_exclude_newer_packages(self, /) -> dict[str, str | bool]:
-        pyproject_toml = self.parse_pyproject_toml()
+        pyproject_toml = self.load_pyproject_toml()
         if (
             (tool := pyproject_toml.get('tool'))
             and isinstance(tool, dict)

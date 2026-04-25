@@ -201,8 +201,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
                 'yt-dlp-ejs': self.update_ejs,
             }[upgrade_only]()
 
-        pyproject_text = self.load_pyproject_text(refresh=True)
-        extras = get_extras(self.parse_pyproject_toml(), resolve=False)
+        extras = get_extras(self.load_pyproject_toml(), resolve=False)
 
         # Remove pinned extras so they don't muck up the lockfile during generation/upgrade
         for pinned_extra_name in PINNED_EXTRAS:
@@ -210,7 +209,6 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
 
         # Write an intermediate pyproject.toml to use for generating lockfile and bundle requirements
         self.replace_pyproject_toml_table_and_write(
-            pyproject_text,
             table_name=EXTRAS_TABLE,
             table_dict=extras,
         )
@@ -306,7 +304,6 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
 
         # Write the finalized pyproject.toml
         self.replace_pyproject_toml_table_and_write(
-            self.load_pyproject_text(),
             table_name=EXTRAS_TABLE,
             table_dict=extras,
         )
@@ -396,9 +393,9 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         )
         updated_paths.add(vendored_info_path)
 
-        content = self.load_pyproject_text()
+        content = self.pyproject_path.read_text()
         updated = content.replace(PREFIX + current_version, PREFIX + version)
-        self.write_pyproject_text(updated)
+        self.pyproject_path.write_text(updated)
         updated_paths.add(self.pyproject_path)
 
         makefile = self._makefile_path.read_text()
@@ -467,9 +464,9 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         if missing_fields := [key for key in makefile_info if not wheel_info.get(key)]:
             raise ValueError(f'wheel info not found in release: {", ".join(missing_fields)}')
 
-        content = self.load_pyproject_text()
+        content = self.pyproject_path.read_text()
         updated = content.replace(PREFIX + current_version, PREFIX + version)
-        self.write_pyproject_text(updated)
+        self.pyproject_path.write_text(updated)
         updated_paths.add(self.pyproject_path)
 
         makefile = self._makefile_path.read_text()

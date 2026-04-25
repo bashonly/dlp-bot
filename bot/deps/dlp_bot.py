@@ -29,7 +29,7 @@ class DLPBotDependenciesUpdater(PythonDependenciesUpdater):
         upgrade_only: str | None,
         verify: bool,
     ):
-        pyproject_toml = self.parse_pyproject_toml(refresh=True)
+        pyproject_toml = self.load_pyproject_toml()
 
         for extra in get_extras(pyproject_toml, resolve=False):
             requirements_txt_path = self._requirements_path / REQS_OUTPUT_TMPL.format(extra)
