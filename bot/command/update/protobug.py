@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Update the protobug version used in yt-dlp.
 

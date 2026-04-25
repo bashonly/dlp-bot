@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Output variables needed for GitHub Actions workflows.
 """

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Update dependencies for a project.
 

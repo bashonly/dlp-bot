@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Create (or update) a pull request on an upstream GitHub repository.
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Update actions in a GitHub repository's workflows.
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Update the ejs version used in yt-dlp.
 
