@@ -328,23 +328,13 @@ class PythonProject(Project):
         self._pyproject_text: str | None = None
 
         self.lockfile_path = self.project_path / 'uv.lock'
-        self._lockfile_text: str | None = None
 
-    def load_lockfile_text(self, /, *, refresh: bool = False) -> str | None:
+    def load_lockfile_toml(self, /) -> dict[str, typing.Any]:
         if not self.lockfile_path.is_file():
-            return None
-
-        if refresh or self._lockfile_text is None:
-            self._lockfile_text = self.lockfile_path.read_text(encoding='utf-8')
-
-        return self._lockfile_text
-
-    def parse_lockfile_toml(self, /, *, refresh: bool = False) -> dict[str, typing.Any]:
-        lockfile_toml = self.load_lockfile_text(refresh=refresh)
-        if lockfile_toml is None:
             return {}
 
-        return tomllib.loads(lockfile_toml)
+        with self.lockfile_path.open('rb') as f:
+            return tomllib.load(f)
 
     def load_pyproject_text(self, /, *, refresh: bool = False) -> str:
         if refresh or self._pyproject_text is None:
@@ -385,9 +375,6 @@ class PythonProject(Project):
         if self.verbose:
             env_vars = [f'{k}={shlex.quote(v)}' for k, v in (env or {}).items() if k.startswith('UV_')]
             print(' '.join(('[uv]', *env_vars, shlex.join(cmd))), file=sys.stderr)
-
-        # invalidate cached lockfile
-        self._lockfile_text = None
 
         try:
             output = subprocess.run(
@@ -482,8 +469,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         self.uv_pip_compile = self.project.uv_pip_compile
         self.load_pyproject_text = self.project.load_pyproject_text
         self.parse_pyproject_toml = self.project.parse_pyproject_toml
-        self.load_lockfile_text = self.project.load_lockfile_text
-        self.parse_lockfile_toml = self.project.parse_lockfile_toml
+        self.load_lockfile_toml = self.project.load_lockfile_toml
         self.write_pyproject_text = self.project.write_pyproject_text
         self.replace_pyproject_toml_table_and_write = self.project.replace_pyproject_toml_table_and_write
 
@@ -502,7 +488,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         return {}
 
     def _get_last_cooldown_timestamp(self, /) -> str | None:
-        lockfile_toml = self.parse_lockfile_toml()
+        lockfile_toml = self.load_lockfile_toml()
         if (
             (options := lockfile_toml.get('options'))
             and isinstance(options, dict)
@@ -536,7 +522,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         **kwargs,
     ) -> tuple[set[pathlib.Path], PythonUpdateResult]:
         # Stash original lockfile for package diff-ing post-update
-        og_lockfile_toml = self.parse_lockfile_toml(refresh=True)
+        og_lockfile_toml = self.load_lockfile_toml()
 
         updated_paths: set[pathlib.Path] = set()
 
@@ -551,7 +537,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
 
         all_updates = package_diff_dict(
             get_lock_packages(og_lockfile_toml) if og_lockfile_toml else {},
-            get_lock_packages(self.parse_lockfile_toml(refresh=True)),
+            get_lock_packages(self.load_lockfile_toml()),
         )
 
         self._post_upgrade(
