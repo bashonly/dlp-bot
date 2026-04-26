@@ -13,7 +13,7 @@ concurrency:
 jobs:
   output_variables:
     name: Output variables
-    if: github.event_name != 'schedule' || vars.DAILY_UPDATE_ACTIONS
+    if: github.event_name != 'schedule' || vars.UPDATE_ACTIONS_DAILY
     runs-on: ubuntu-latest
     outputs:
       default_head_branch: ${{ steps.variables.outputs.default_head_branch }}
@@ -44,7 +44,7 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.output_variables.outputs.matrix) }}
     env:
-      HEAD_BRANCH: ${{ vars.ACTIONS_BRANCH || needs.output_variables.outputs.default_head_branch }}
+      HEAD_BRANCH: ${{ vars.UPDATE_ACTIONS_BRANCH || needs.output_variables.outputs.default_head_branch }}
       HEAD_OWNER: ${{ vars.HEAD_OWNER || needs.output_variables.outputs.default_head_owner }}
 
     steps:
@@ -83,7 +83,7 @@ jobs:
       - name: Run bot update actions ${{ matrix.repo }}
         env:
           GH_TOKEN: ${{ secrets.BOT_TOKEN }}
-          DLPBOT_ACTIONS_COOLDOWN: ${{ vars.DLPBOT_ACTIONS_COOLDOWN || '7 days' }}
+          COOLDOWN: ${{ vars.UPDATE_ACTIONS_COOLDOWN }}
           WORKING_REPO: ${{ matrix.repo }}
         run: |
           cd dlp-bot
@@ -92,5 +92,6 @@ jobs:
             --verbose \
             --git-protocol https \
             --head "${HEAD_OWNER}:${HEAD_BRANCH}" \
+            --exclude-newer "${COOLDOWN}" \
             -- \
             "${WORKING_REPO}" ../"${WORKING_REPO}"

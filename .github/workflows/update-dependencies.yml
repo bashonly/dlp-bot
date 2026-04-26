@@ -13,7 +13,7 @@ concurrency:
 jobs:
   output_variables:
     name: Output variables
-    if: github.event_name != 'schedule' || vars.DAILY_UPDATE_DEPENDENCIES
+    if: github.event_name != 'schedule' || vars.UPDATE_DEPENDENCIES_DAILY
     runs-on: ubuntu-latest
     outputs:
       default_head_branch: ${{ steps.variables.outputs.default_head_branch }}
@@ -44,7 +44,7 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.output_variables.outputs.matrix) }}
     env:
-      HEAD_BRANCH: ${{ vars.DEPENDENCIES_BRANCH || needs.output_variables.outputs.default_head_branch }}
+      HEAD_BRANCH: ${{ vars.UPDATE_DEPENDENCIES_BRANCH || needs.output_variables.outputs.default_head_branch }}
       HEAD_OWNER: ${{ vars.HEAD_OWNER || needs.output_variables.outputs.default_head_owner }}
 
     steps:
