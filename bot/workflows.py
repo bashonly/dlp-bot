@@ -21,10 +21,10 @@ from bot.knowledge import (
     BOT_END_HTML_TAG,
 )
 from bot.utils import (
-    SHA_PATTERN,
+    SHA1_PATTERN,
     BotError,
     VerificationError,
-    is_sha,
+    is_sha1,
     parse_owner_and_repo,
 )
 
@@ -244,7 +244,7 @@ class Workflow:
         self.needed_updates.remove(old.action)
         self.update_text(
             re.sub(
-                USES_RE_TMPL.format(label=re.escape(str(old.action)), sha=SHA_PATTERN),
+                USES_RE_TMPL.format(label=re.escape(str(old.action)), sha=SHA1_PATTERN),
                 rf'uses: \g<path>@{new.sha}  # {new.tag}',
                 self.text,
             ),
@@ -351,7 +351,7 @@ class ActionsUpdater:
         if '@' not in uses_value:
             return None
         full_action_name, commit_sha = parse_gha_uses_value(uses_value)
-        if not is_sha(commit_sha):
+        if not is_sha1(commit_sha):
             return None
         owner, repo = parse_owner_and_repo(full_action_name)
         if owner in ('.', '.github'):
@@ -426,7 +426,7 @@ class ActionsUpdater:
         sha: str = release['target_commitish']
 
         # Is target_commitish was just a branch name?
-        if not is_sha(sha):
+        if not is_sha1(sha):
             tagged_object = self.api.get_tag_by_name(owner, repo, tag)['object']
 
             if tagged_object['type'] != 'commit':
@@ -478,7 +478,7 @@ class ActionsUpdater:
                 break
             if not latest_tag:
                 target = release['target_commitish']
-                if target != action.default_branch and not is_sha(target):
+                if target != action.default_branch and not is_sha1(target):
                     continue
                 if release_is_too_hot(release, self._exclude_newer):
                     print(

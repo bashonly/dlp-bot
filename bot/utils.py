@@ -8,12 +8,12 @@ import string
 import typing
 import urllib.request
 
-SHA_PATTERN = r'[0-9a-f]{40}'
-SHA_RE = re.compile(SHA_PATTERN)
+SHA1_PATTERN = r'[0-9a-f]{40}'
+SHA1_RE = re.compile(SHA1_PATTERN)
 
 
-def is_sha(commitish: str) -> bool:
-    return bool(SHA_RE.fullmatch(commitish))
+def is_sha1(commitish: str) -> bool:
+    return bool(SHA1_RE.fullmatch(commitish))
 
 
 class BotError(Exception):
