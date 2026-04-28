@@ -20,7 +20,7 @@ SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
         'default_branch': 'master',
         'commit_prefix': '[ci] ',
         'commit_addendum': 'Authored by: {username}',
-        'services': ['actions', 'dependencies'],
+        'services': ['actions', 'dependencies', 'ejs', 'protobug', 'user-agent'],
     },
     'ejs': {
         'forge': 'github',
