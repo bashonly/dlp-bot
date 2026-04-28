@@ -962,22 +962,23 @@ class GitHubPullRequest:
             print(f'pull request #{self.number} has already been created', file=sys.stderr)
             return
 
-        self._info.update(
-            self.api.create_pull_request(
-                self.base.owner,
-                self.base.repo,
-                self.head.label,
-                self.base.branch,
-                head_repo=self.head.repo,
-                title=self.update_title(title) if title else self.title,
-                body=self.update_body(body) if body else self.body,
-                maintainer_can_modify=maintainer_can_modify,
-                draft=draft,
-            )
+        result = self.api.create_pull_request(
+            self.base.owner,
+            self.base.repo,
+            self.head.label,
+            self.base.branch,
+            head_repo=self.head.repo,
+            title=self.update_title(title) if title else self.title,
+            body=self.update_body(body) if body else self.body,
+            maintainer_can_modify=maintainer_can_modify,
+            draft=draft,
         )
+
+        self._info.update(result)
         self._title_unsaved_changes = False
         self._body_unsaved_changes = False
         self._update_attributes()
+        return result
 
     def update(
         self,
@@ -993,21 +994,22 @@ class GitHubPullRequest:
             print('unable to update pull request as it has not yet been created', file=sys.stderr)
             return
 
-        self._info.update(
-            self.api.update_pull_request(
-                self.base.owner,
-                self.base.repo,
-                self.number,
-                title=self.update_title(title) if title else self.title,
-                body=self.update_body(body) if body else self.body,
-                state=state,
-                base=base,
-                maintainer_can_modify=maintainer_can_modify,
-            )
+        result = self.api.update_pull_request(
+            self.base.owner,
+            self.base.repo,
+            self.number,
+            title=self.update_title(title) if title else self.title,
+            body=self.update_body(body) if body else self.body,
+            state=state,
+            base=base,
+            maintainer_can_modify=maintainer_can_modify,
         )
+
+        self._info.update(result)
         self._title_unsaved_changes = False
         self._body_unsaved_changes = False
         self._update_attributes()
+        return result
 
     def create_or_update(
         self,
@@ -1017,23 +1019,24 @@ class GitHubPullRequest:
         body: str | None = None,
         maintainer_can_modify: bool | None = None,
         draft: bool | None = None,
-    ) -> None:
-        if self.is_created():
-            print(f'PR #{self.number} already exists, updating its info', file=sys.stderr)
-            self.update(
+    ):
+        result = self.create(
+            title=title,
+            body=body,
+            maintainer_can_modify=maintainer_can_modify,
+            draft=draft,
+        )
+
+        if not result:
+            result = self.update(
                 title=title,
                 body=body,
                 maintainer_can_modify=maintainer_can_modify,
-            )
-        else:
-            self.create(
-                title=title,
-                body=body,
-                maintainer_can_modify=maintainer_can_modify,
-                draft=draft,
             )
 
-    def close(self, /) -> None:
+        return result
+
+    def close(self, /):
         if not self.is_open():
             print('unable to reopen pull request as it has already been merged', file=sys.stderr)
             return
@@ -1041,8 +1044,9 @@ class GitHubPullRequest:
         if result := self.update(state='closed'):
             self._info.update(result)
             self._update_attributes()
+            return result
 
-    def reopen(self, /) -> None:
+    def reopen(self, /):
         if self.is_open():
             print('unable to reopen pull request as it is already open', file=sys.stderr)
             return
@@ -1054,6 +1058,7 @@ class GitHubPullRequest:
         if result := self.update(state='open'):
             self._info.update(result)
             self._update_attributes()
+            return result
 
     def merge(
         self,
