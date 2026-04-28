@@ -1,0 +1,90 @@
+name: Update user-agent
+on:
+  schedule:
+    - cron: '19 19 1 * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: update-user-agent
+  cancel-in-progress: false
+
+jobs:
+  output_variables:
+    name: Output variables
+    if: github.event_name != 'schedule' || vars.UPDATE_USER_AGENT_MONTHLY
+    runs-on: ubuntu-latest
+    outputs:
+      default_head_branch: ${{ steps.variables.outputs.default_head_branch }}
+      default_head_owner: ${{ steps.variables.outputs.default_head_owner }}
+      matrix: ${{ steps.variables.outputs.matrix }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.14"
+
+      - name: Output variables
+        id: variables
+        run: python -m bot tools variables user-agent
+
+  update_user_agent:
+    name: Update user-agent (${{ matrix.repo }})
+    needs: [output_variables]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.output_variables.outputs.matrix) }}
+    env:
+      HEAD_BRANCH: ${{ vars.UPDATE_USER_AGENT_BRANCH || needs.output_variables.outputs.default_head_branch }}
+      HEAD_OWNER: ${{ vars.HEAD_OWNER || needs.output_variables.outputs.default_head_owner }}
+
+    steps:
+      - name: Checkout bot repo (${{ github.repository }})
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          path: dlp-bot
+          persist-credentials: false
+
+      - name: Checkout working repo (${{ format('{0}/{1}', env.HEAD_OWNER, matrix.repo) }})
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          repository: ${{ format('{0}/{1}', env.HEAD_OWNER, matrix.repo) }}
+          path: ${{ matrix.repo }}
+          fetch-depth: 0
+          persist-credentials: true  # Needed to git-push
+          token: ${{ secrets.BOT_TOKEN }}
+
+      - name: Configure git user
+        env:
+          GIT_USER_NAME: ${{ vars.GIT_USER_NAME || 'dlp-bot' }}
+          GIT_USER_EMAIL: ${{ vars.GIT_USER_EMAIL || 'bot@yt-dlp.org' }}
+        run: |
+          git config --global user.name "${GIT_USER_NAME}"
+          git config --global user.email "${GIT_USER_EMAIL}"
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.14"
+
+      - name: Run bot update user-agent
+        env:
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
+          WORKING_REPO: ${{ matrix.repo }}
+        run: |
+          cd dlp-bot
+          python -m bot update user-agent \
+            --pr \
+            --verbose \
+            --git-protocol https \
+            --head "${HEAD_OWNER}:${HEAD_BRANCH}" \
+            -- \
+            ../"${WORKING_REPO}"
