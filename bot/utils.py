@@ -3,9 +3,13 @@ from __future__ import annotations
 import collections.abc
 import contextlib
 import datetime as dt
+import json
 import re
 import string
+import sys
 import typing
+import urllib.error
+import urllib.parse
 import urllib.request
 
 SHA1_PATTERN = r'[0-9a-f]{40}'
@@ -46,6 +50,84 @@ def filter_dict(
     cndn: collections.abc.Callable = lambda _, v: v is not None,
 ):
     return {k: v for k, v in dct.items() if cndn(k, v)}
+
+
+class BaseAPICaller:
+    def __init__(
+        self,
+        /,
+        base_url: str,
+        *,
+        retries: int = 3,
+        timeout: int = 5,
+        verbose: bool = False,
+        user_agent: str = 'dlp-bot',
+        note_prefix: str = 'bot',
+        custom_exception: type[Exception] = BotError,
+    ):
+        self.base_url = base_url
+        self.retries = retries
+        self.timeout = timeout
+        self.verbose = verbose
+        self.user_agent = user_agent
+        self._note = note_prefix
+        self._exc = custom_exception
+
+    @property
+    def headers(self) -> dict[str, str]:
+        return {
+            'Accept': 'application/json',
+            'User-Agent': self.user_agent,
+        }
+
+    def _fetch_json(
+        self,
+        /,
+        url_or_path: str,
+        *,
+        query: dict[str, str | None] | None = None,
+        data: bytes | None = None,
+        headers: dict[str, str] | None = None,
+        method: str | None = None,
+        status_check: list[int] | None = None,
+    ):
+        url = urllib.parse.urlparse(urllib.parse.urljoin(self.base_url, url_or_path))
+        assert url.geturl().startswith(self.base_url), 'Invalid base_url and path combination'
+        assert method in {None, 'DELETE', 'GET', 'PATCH', 'POST', 'PUT'}, f'Invalid HTTP method "{method}"'
+
+        qs = urllib.parse.urlencode(
+            {
+                **urllib.parse.parse_qs(url.query),
+                **filter_dict(query or {}),
+            },
+            doseq=True,
+            quote_via=urllib.parse.quote,
+        )
+
+        full_url = urllib.parse.urlunparse(url._replace(query=qs))
+
+        for attempt in range(self.retries + 1):
+            if self.verbose:
+                print(f'[{self._note}] {method or "GET"} {url.path}{"?" if qs else ""}{qs or ""}', file=sys.stderr)
+            try:
+                with request(full_url, data=data, headers=headers, method=method, timeout=self.timeout) as resp:
+                    return json.load(resp)
+            except json.JSONDecodeError as error:
+                if status_check:
+                    return True
+                raise self._exc(f'[{type(error).__name__}] {error}')
+            except urllib.error.HTTPError as error:
+                if status_check and error.code in status_check:
+                    return False
+                raise self._exc(f'[{type(error).__name__}] {error}')
+            except TimeoutError as error:
+                if attempt < self.retries:
+                    print(
+                        f'[{self._note}] operation timed out, retrying ({attempt + 1} of {self.retries})',
+                        file=sys.stderr,
+                    )
+                    continue
+                raise self._exc(f'[{type(error).__name__}] {error}')
 
 
 def remove_around(data: str, before: str, after: str) -> str:

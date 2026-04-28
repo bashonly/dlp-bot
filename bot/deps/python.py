@@ -29,8 +29,8 @@ from bot.knowledge import (
     PYTHON_PACKAGES,
 )
 from bot.utils import (
+    BaseAPICaller,
     BotError,
-    request,
 )
 
 EXTRAS_TABLE = 'project.optional-dependencies'
@@ -51,6 +51,31 @@ class UVError(BotError):
 
 
 type PythonUpdateResult = dict[str, tuple[str, str] | tuple[str, None] | tuple[None, str]]
+
+
+class PyPIAPICaller(BaseAPICaller):
+    _API_BASE_URL = 'https://pypi.org/'
+    _NOTE_PREFIX = 'pypi'
+
+    def __init__(self, /, *, verbose: bool = False):
+        super().__init__(
+            base_url=self._API_BASE_URL,
+            verbose=verbose,
+            note_prefix=self._NOTE_PREFIX,
+            custom_exception=PyPIError,
+        )
+
+    def get_project(self, /, project: str):
+        return self._fetch_json(f'/pypi/{project}/json', headers=self.headers)
+
+
+@dataclasses.dataclass(frozen=True)
+class PythonDependency:
+    name: str
+    exact_version: str
+    direct_reference: str | None
+    specifier: str | None
+    markers: str | None
 
 
 def make_commit_message(
@@ -93,28 +118,6 @@ def make_commit_line(package: str, old: str | None, new: str | None, *, prefix: 
     return f'{prefix}Bump {package} {old} => {new}'
 
 
-def call_pypi_api(project: str, *, retries: int = 3):
-    headers = {
-        'Accept': 'application/json',
-        'User-Agent': 'dlp-bot',
-    }
-    for attempt in range(retries):
-        print(f'Fetching package info from PyPI API: {project}', file=sys.stderr)
-        try:
-            with request(f'https://pypi.org/pypi/{project}/json', headers=headers, timeout=5) as resp:
-                return json.load(resp)
-        except (json.JSONDecodeError, urllib.error.HTTPError) as error:
-            raise PyPIError(f'[{type(error).__name__}] {error}')
-        except TimeoutError as error:
-            if attempt < retries:
-                print(
-                    f'[bot] operation timed out, retrying ({attempt + 1} of {retries})',
-                    file=sys.stderr,
-                )
-                continue
-            raise PyPIError(f'[{type(error).__name__}] {error}')
-
-
 def denormalized_tags(tag: str) -> list[str]:
     tags = [tag]
     # De-normalize calver tags like 2024.1.1 back to 2024.01.01
@@ -124,15 +127,6 @@ def denormalized_tags(tag: str) -> list[str]:
             tags.append(f'{year}.{month:02d}.{day:02d}')
 
     return tags + [f'v{t}' for t in tags]
-
-
-@dataclasses.dataclass(frozen=True)
-class PythonDependency:
-    name: str
-    exact_version: str
-    direct_reference: str | None
-    specifier: str | None
-    markers: str | None
 
 
 def parse_version_from_dist(filename: str, name: str) -> str:
@@ -586,6 +580,8 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         /,
         all_updates: PythonUpdateResult,
     ) -> collections.abc.Iterator[str]:
+        pypi = PyPIAPICaller(verbose=self.gh.verbose)
+
         yield 'package | old | new | diff | changelog'
         yield '--------|-----|-----|------|----------'
         for package, (old, new) in sorted(all_updates.items()):
@@ -594,7 +590,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
                 changelog = ''
 
             else:
-                project_urls = call_pypi_api(package)['info']['project_urls']
+                project_urls = pypi.get_project(package)['info']['project_urls']
                 github_info = next(
                     (mobj.groupdict() for url in project_urls.values() if (mobj := GITHUB_URL_RE.match(url))),
                     {},

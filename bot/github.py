@@ -10,14 +10,11 @@ import sys
 import time
 import types
 import typing
-import urllib.error
-import urllib.parse
-import urllib.request
 
 from bot.utils import (
+    BaseAPICaller,
     BotError,
     filter_dict,
-    request,
 )
 
 GITHUB_URL_RE = re.compile(r'https://github\.com/(?P<owner>[0-9a-zA-Z_-]+)/(?P<repo>[0-9a-zA-Z_-]+)')
@@ -97,7 +94,10 @@ def upgrade_branch(branch: RelativeBranch | AbsoluteBranch, repo: str) -> Absolu
     return AbsoluteBranch(owner=branch.owner, repo=repo, branch=branch.branch)
 
 
-class GitHubBaseCaller:
+class GitHubAPICaller(BaseAPICaller):
+    _API_BASE_URL = 'https://api.github.com/'
+    _NOTE_PREFIX = 'api'
+
     def __init__(
         self,
         /,
@@ -106,82 +106,18 @@ class GitHubBaseCaller:
         timeout: int = 5,
         verbose: bool = False,
         user_agent: str = 'dlp-bot',
-    ):
-        self.retries = retries
-        self.timeout = timeout
-        self.verbose = verbose
-        self.user_agent = user_agent
-        self._note = 'bot'
-
-    @property
-    def headers(self) -> dict[str, str]:
-        return {
-            'User-Agent': self.user_agent,
-        }
-
-    def _fetch_json(
-        self,
-        /,
-        base_url: str,
-        path: str | None = None,
-        *,
-        query: dict[str, str | None] | None = None,
-        data: bytes | None = None,
-        headers: dict[str, str] | None = None,
-        method: str | None = None,
-        status_check: list[int] | None = None,
-    ):
-        url = urllib.parse.urlparse(urllib.parse.urljoin(base_url, path))
-        assert url.geturl().startswith(base_url), 'Invalid base_url and path combination'
-        assert method in {None, 'DELETE', 'GET', 'PATCH', 'POST', 'PUT'}, f'Invalid HTTP method "{method}"'
-
-        qs = urllib.parse.urlencode(
-            {
-                **urllib.parse.parse_qs(url.query),
-                **filter_dict(query or {}),
-            },
-            True,
-        )
-
-        full_url = urllib.parse.urlunparse(url._replace(query=qs))
-
-        for attempt in range(self.retries + 1):
-            if self.verbose:
-                print(f'[{self._note}] {method or "GET"} {url.path}{"?" if qs else ""}{qs or ""}', file=sys.stderr)
-            try:
-                with request(full_url, data=data, headers=headers, method=method, timeout=self.timeout) as resp:
-                    return json.load(resp)
-            except json.JSONDecodeError as error:
-                if status_check:
-                    return True
-                raise GitHubError(f'[{type(error).__name__}] {error}')
-            except urllib.error.HTTPError as error:
-                if status_check and error.code in status_check:
-                    return False
-                raise GitHubError(f'[{type(error).__name__}] {error}')
-            except TimeoutError as error:
-                if attempt < self.retries:
-                    print(
-                        f'[{self._note}] operation timed out, retrying ({attempt + 1} of {self.retries})',
-                        file=sys.stderr,
-                    )
-                    continue
-                raise GitHubError(f'[{type(error).__name__}] {error}')
-
-
-class GitHubAPICaller(GitHubBaseCaller):
-    API_BASE_URL = 'https://api.github.com/'
-
-    def __init__(
-        self,
-        /,
-        *args,
         github_token: str | None = None,
-        **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            base_url=self._API_BASE_URL,
+            retries=retries,
+            timeout=timeout,
+            verbose=verbose,
+            user_agent=user_agent,
+            note_prefix=self._NOTE_PREFIX,
+            custom_exception=GitHubError,
+        )
         self._github_token = github_token
-        self._note = 'api'
 
     @property
     def headers(self) -> dict[str, str]:
@@ -204,7 +140,6 @@ class GitHubAPICaller(GitHubBaseCaller):
         status_check: list[int] | None = None,
     ):
         return self._fetch_json(
-            self.API_BASE_URL,
             path,
             query=query,
             data=json.dumps(body, separators=(',', ':')).encode() if body else None,
@@ -788,17 +723,28 @@ class GitHubAPICaller(GitHubBaseCaller):
         )
 
 
-class GitHubWebFetcher(GitHubBaseCaller):
-    WEB_BASE_URL = 'https://github.com/'
+class GitHubWebFetcher(BaseAPICaller):
+    _WEB_BASE_URL = 'https://github.com/'
+    _NOTE_PREFIX = 'web'
 
     def __init__(
         self,
         /,
-        *args,
-        **kwargs,
+        *,
+        retries: int = 3,
+        timeout: int = 5,
+        verbose: bool = False,
+        user_agent: str = 'dlp-bot',
     ):
-        super().__init__(*args, **kwargs)
-        self._note = 'web'
+        super().__init__(
+            base_url=self._WEB_BASE_URL,
+            retries=retries,
+            timeout=timeout,
+            verbose=verbose,
+            user_agent=user_agent,
+            note_prefix=self._NOTE_PREFIX,
+            custom_exception=GitHubError,
+        )
 
     @classmethod
     def from_api_instance(
@@ -813,15 +759,8 @@ class GitHubWebFetcher(GitHubBaseCaller):
             user_agent=api.user_agent,
         )
 
-    @property
-    def headers(self):
-        return {
-            **super().headers,
-            'Accept': 'application/json',
-        }
-
     def fetch(self, /, path: str):
-        return self._fetch_json(self.WEB_BASE_URL, path, headers=self.headers)
+        return self._fetch_json(path, headers=self.headers)
 
     def fetch_repo(self, /, owner: str, repo: str):
         return self.fetch(f'/{owner}/{repo}')
