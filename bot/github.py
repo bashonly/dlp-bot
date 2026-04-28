@@ -554,7 +554,7 @@ class GitHubAPICaller(GitHubBaseCaller):
 
         @param owner:                   repository owner
         @param repo:                    repository name
-        @param state:                   (optional) filter by state: 'open', 'closed', or 'all'
+        @param state:                   (optional) filter by state: 'open' (default), 'closed', or 'all'
         @param head:                    (optional) filter by the PR's head {owner}:{branch}
         @param base:                    (optional) filter by the base branch name
         @param sort:                    (optional) 'created', 'updated', 'popularity', 'long-running'
