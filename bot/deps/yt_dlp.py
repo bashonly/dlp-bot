@@ -325,6 +325,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
                 if not line.startswith(PREFIX):
                     continue
                 current_version, _, _ = line.removeprefix(PREFIX).partition('"')
+                break
 
         if not current_version:
             raise ValueError(f'{PACKAGE_NAME} dependency line could not be found')
@@ -417,6 +418,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
                 if not line.startswith(PREFIX):
                     continue
                 current_version, _, _ = line.removeprefix(PREFIX).partition('"')
+                break
 
         if not current_version:
             raise ValueError(f'{PACKAGE_NAME} dependency line could not be found')
