@@ -204,7 +204,7 @@ def _real_run(args: argparse.Namespace):
 
     starting_point = git.bot_rev_parse('HEAD')
 
-    module_path = repo_path / TARGET_FILE
+    module_path = git.repo_path / TARGET_FILE
     if not module_path.is_file():
         raise BotError('unable to find yt_dlp.utils.networking module')
 
