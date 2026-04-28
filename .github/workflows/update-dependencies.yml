@@ -33,8 +33,8 @@ jobs:
         id: variables
         run: python -m bot tools variables dependencies
 
-  update_actions:
-    name: Update actions (${{ matrix.repo }})
+  update_dependencies:
+    name: Update dependencies (${{ matrix.repo }})
     needs: [output_variables]
     permissions:
       contents: read
@@ -80,7 +80,7 @@ jobs:
           python -m pip install -U --require-hashes -r "dlp-bot/requirements/pip.txt"
           python -m pip install -U --require-hashes -r "dlp-bot/requirements/update-dependencies.txt"
 
-      - name: Run bot update actions ${{ matrix.repo }}
+      - name: Run bot update dependencies ${{ matrix.repo }}
         env:
           GH_TOKEN: ${{ secrets.BOT_TOKEN }}
           WORKING_REPO: ${{ matrix.repo }}
