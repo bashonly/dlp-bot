@@ -9,6 +9,7 @@ DEFAULT_HEAD_BRANCHES = {
     'dependencies': 'bot/update-dependencies',
     'ejs': 'bot/update-ejs',
     'protobug': 'bot/update-protobug',
+    'user-agent': 'bot/update-user-agent',
 }
 
 SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {

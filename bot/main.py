@@ -14,6 +14,7 @@ import bot.command.update.actions
 import bot.command.update.dependencies
 import bot.command.update.ejs
 import bot.command.update.protobug
+import bot.command.update.user_agent
 from bot import __version__
 
 
@@ -123,6 +124,7 @@ def _main():
     _add_final_subcmd(bot.command.update.dependencies, nested_map, nested_subparsers, aliases=['deps'])
     _add_final_subcmd(bot.command.update.ejs, nested_map, nested_subparsers)
     _add_final_subcmd(bot.command.update.protobug, nested_map, nested_subparsers)
+    _add_final_subcmd(bot.command.update.user_agent, nested_map, nested_subparsers, aliases=['ua'])
 
     nested_map, nested_subparsers = _add_intermediate_subcmd(bot.command.tools, parsers_map, root_subparsers)
     _add_final_subcmd(bot.command.tools.variables, nested_map, nested_subparsers)
