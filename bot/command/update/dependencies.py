@@ -205,7 +205,10 @@ def _real_run(args: argparse.Namespace):
 
     pull_request_body, commit_message = updater.parse_results(
         all_updates,
-        commit_prefix=args.commit_prefix or repo_info['commit_prefix'],
+        commit_prefix=safe_format(
+            args.commit_prefix or repo_info['commit_prefix'],
+            category='build',
+        ),
         commit_addendum=safe_format(
             args.commit_addendum or repo_info['commit_addendum'],
             username=pr.head.owner,

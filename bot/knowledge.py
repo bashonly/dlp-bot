@@ -18,7 +18,7 @@ SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
         'owner': 'yt-dlp',
         'repo': 'yt-dlp',
         'default_branch': 'master',
-        'commit_prefix': '[ci] ',
+        'commit_prefix': '[{category}] ',
         'commit_addendum': 'Authored by: {username}',
         'services': ['actions', 'dependencies', 'ejs', 'protobug', 'user-agent'],
     },

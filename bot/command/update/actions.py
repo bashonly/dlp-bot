@@ -157,12 +157,13 @@ def _real_run(args: argparse.Namespace):
         exclude_newer=args.exclude_newer,
     )
 
+    formatted_prefix = safe_format(args.commit_prefix or repo_info['commit_prefix'], category='ci')
     formatted_addendum = safe_format(args.commit_addendum or repo_info['commit_addendum'], username=pr.head.owner)
 
     workflows, all_updates = updater.update(
         commit_type=args.commit_type or ('incremental' if args.pr else 'bulk'),
         export_patches=args.export_patches,
-        commit_prefix=args.commit_prefix or repo_info['commit_prefix'],
+        commit_prefix=formatted_prefix,
         commit_addendum=formatted_addendum,
         verify=args.verify_head_branch or args.verify_current_worktree,
     )
@@ -176,7 +177,7 @@ def _real_run(args: argparse.Namespace):
     pull_request_body, merge_commit_message = updater.parse_results(
         workflows,
         all_updates,
-        commit_prefix=args.commit_prefix or repo_info['commit_prefix'],
+        commit_prefix=formatted_prefix,
         commit_addendum=formatted_addendum,
     )
     pr.update_body(pull_request_body)
