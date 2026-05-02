@@ -180,6 +180,11 @@ class EJSDependenciesUpdater(DependenciesUpdater):
     def check(self, /):
         self.project._run_exe(sys.executable, './check.py', exc=VerificationError, note='check')
 
+    def wipe_node_modules(self, /):
+        if self.node_modules_path.is_dir():
+            print('[bot] Removing node_modules', file=sys.stderr)
+            shutil.rmtree(str(self.node_modules_path))
+
     def update(
         self,
         /,
@@ -194,10 +199,7 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         self.pnpm('upgrade', '--latest')
         updated_paths.add(self.package_json_path)
 
-        if self.node_modules_path.is_dir():
-            print('[bot] Removing node_modules', file=sys.stderr)
-            shutil.rmtree(str(self.node_modules_path))
-
+        self.wipe_node_modules()
         if self.package_lock_path.is_file():
             print('[bot] Removing package-lock.json', file=sys.stderr)
             self.package_lock_path.unlink()
@@ -212,8 +214,10 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         self.bun('pm', 'migrate', '--force')
         updated_paths.add(self.bun_lock_path)
 
+        self.wipe_node_modules()
+
         # Make sure to use a deno with lockfile v4 (<2.3)
-        self.deno('install', '--lockfile-only')
+        self.deno('install')
         updated_paths.add(self.deno_lock_path)
 
         # Ensure that `deno.json` is the same as `package-lock.json`.
