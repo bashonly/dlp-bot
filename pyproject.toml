@@ -4,6 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dlp-bot"
+version = "0.1.0"
 authors = [
     {name = "bashonly", email = "bashonly@protonmail.com"},
 ]
@@ -20,7 +21,6 @@ keywords = [
 ]
 license = "Unlicense"
 license-files = ["LICENSE"]
-dynamic = ["version"]
 dependencies = []
 
 [project.optional-dependencies]
@@ -63,10 +63,6 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["bot"]
-
-[tool.hatch.version]
-path = "bot/__init__.py"
-pattern = "__version__ = '(?P<version>[^']+)'"
 
 [tool.hatch.metadata]
 allow-direct-references = true
