@@ -97,8 +97,8 @@ jobs:
         if: matrix.repo == 'ejs'
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
         with:
-          # minimum supported version
-          bun-version: "1.0.31"
+          # need bun 1.2+ for migrating package-lock.json to bun.lock
+          bun-version: "1.2"
           no-cache: true
 
       - name: Install Deno

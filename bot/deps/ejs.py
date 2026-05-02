@@ -226,7 +226,7 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         if self.bun_lock_path.is_file():
             print('[bot] Removing bun.lock', file=sys.stderr)
             self.bun_lock_path.unlink()
-        self.bun('pm', 'migrate', '--force', '--save-text-lockfile')
+        self.bun('pm', 'migrate', '--force')
         if not self.bun_lock_path.is_file():
             raise BotError('bun.lock does not exist')
         updated_paths.add(self.bun_lock_path)
