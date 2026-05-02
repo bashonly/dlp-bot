@@ -15,7 +15,8 @@ from bot.deps.common import (
     DependenciesUpdateResult,
     Project,
     denormalized_tags,
-    make_commit_message,
+    make_commit_body,
+    make_commit_line,
     package_diff_dict,
 )
 from bot.github import (
@@ -40,6 +41,61 @@ def get_package_lock_packages(package_lock: dict[str, typing.Any]) -> dict[str, 
         # Omit nested deps, e.g.: node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch
         if package_name and '/node_modules/' not in package_name
     }
+
+
+def make_ejs_commit_message(
+    all_updates: DependenciesUpdateResult,
+    updates: DependenciesUpdateResult,
+    dev_updates: DependenciesUpdateResult,
+    *,
+    prefix: str | None = None,
+    addendum: str | None = None,
+) -> str:
+    addendum = f'\n\n{addendum}\n' if addendum else '\n'
+
+    if len(all_updates) > 1:
+        if not updates or not dev_updates:
+            commit_body = make_commit_body(all_updates)
+        else:
+            commit_body = '\n\n'.join((
+                make_commit_body(updates),
+                make_commit_body(dev_updates),
+            ))
+
+        return ''.join((
+            make_ejs_commit_title(updates, dev_updates, prefix=prefix),
+            '\n\n',
+            commit_body,
+            addendum,
+        ))
+    else:
+        package, (old, new) = next(iter(all_updates.items()))
+
+        return ''.join((
+            make_commit_line(package, old, new, prefix=prefix or ''),
+            addendum,
+        ))
+
+
+def make_ejs_commit_title(
+    updates: DependenciesUpdateResult,
+    dev_updates: DependenciesUpdateResult,
+    *,
+    prefix: str | None = None,
+) -> str:
+    deps_count = len(updates)
+    deps_str = f'{deps_count} dependenc{"ies" if deps_count > 1 else "y"}'
+
+    dev_deps_count = len(dev_updates)
+    dev_deps_str = f'{dev_deps_count} development dependenc{"ies" if dev_deps_count > 1 else "y"}'
+
+    return ''.join((
+        prefix or '',
+        'Update ',
+        deps_str if deps_count else '',
+        ' & ' if deps_count and dev_deps_count else '',
+        dev_deps_str if dev_deps_count else '',
+    ))
 
 
 class PNPMError(BotError):
@@ -240,13 +296,20 @@ class EJSDependenciesUpdater(DependenciesUpdater):
     def _generate_report(
         self,
         /,
-        all_updates: DependenciesUpdateResult,
+        updates: DependenciesUpdateResult,
+        npm_api: NPMAPICaller,
+        *,
+        header: str | None = None,
     ) -> collections.abc.Iterator[str]:
-        npm_api = NPMAPICaller(verbose=self.gh.verbose)
+        if not updates:
+            return
+
+        if header:
+            yield f'## {header}\n'
 
         yield 'package | old | new | diff'
         yield '--------|-----|-----|-----'
-        for package, (old, new) in sorted(all_updates.items()):
+        for package, (old, new) in sorted(updates.items()):
             metadata = npm_api.get_package_metadata(package)
             homepage_url = metadata.get('homepage') or f'https://www.npmjs.com/package/{package}'
 
@@ -321,24 +384,15 @@ class EJSDependenciesUpdater(DependenciesUpdater):
     def _make_pull_request_description(
         self,
         /,
-        all_updates: DependenciesUpdateResult,
+        dependencies: DependenciesUpdateResult,
+        dev_dependencies: DependenciesUpdateResult,
     ) -> str:
-        package_json_deps = self.load_package_json()['dependencies']
-        dependencies: DependenciesUpdateResult = {}
-        dev_dependencies: DependenciesUpdateResult = {}
-
-        for package_name, diff_tuple in all_updates.items():
-            if package_name in package_json_deps:
-                dependencies[package_name] = diff_tuple
-            else:
-                dev_dependencies[package_name] = diff_tuple
+        npm_api = NPMAPICaller(verbose=self.gh.verbose)
 
         return '\n'.join((
             f'{BOT_BEGIN_HTML_TAG}\n',
-            '## Dependencies\n',
-            *self._generate_report(dependencies),
-            '## Development dependencies\n',
-            *self._generate_report(dev_dependencies),
+            *self._generate_report(dependencies, npm_api, header='Dependencies'),
+            *self._generate_report(dev_dependencies, npm_api, header=' Development dependencies'),
             f'\n{BOT_END_HTML_TAG}\n\n',
         ))
 
@@ -353,7 +407,17 @@ class EJSDependenciesUpdater(DependenciesUpdater):
     ) -> tuple[str, str]:
         """Returns a tuple of the pull request description and the merge commit message"""
 
+        dependencies = self.load_package_json()['dependencies']
+        updates: DependenciesUpdateResult = {}
+        dev_updates: DependenciesUpdateResult = {}
+
+        for package_name, diff_tuple in all_updates.items():
+            if package_name in dependencies:
+                updates[package_name] = diff_tuple
+            else:
+                dev_updates[package_name] = diff_tuple
+
         return (
-            self._make_pull_request_description(all_updates),
-            make_commit_message(all_updates, prefix=commit_prefix, addendum=commit_addendum),
+            self._make_pull_request_description(updates, dev_updates),
+            make_ejs_commit_message(all_updates, updates, dev_updates, prefix=commit_prefix, addendum=commit_addendum),
         )

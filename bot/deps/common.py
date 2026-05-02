@@ -48,18 +48,21 @@ def make_commit_message(
     prefix: str | None = None,
     addendum: str | None = None,
 ) -> str:
+    addendum = f'\n\n{addendum}\n' if addendum else '\n'
+
     if len(all_updates) > 1:
-        return '\n\n'.join((
+        return ''.join((
             make_commit_title(all_updates, prefix=prefix),
+            '\n\n',
             make_commit_body(all_updates),
-            f'{addendum or ""}\n',
+            addendum,
         ))
     else:
         package, (old, new) = next(iter(all_updates.items()))
 
-        return '\n\n'.join((
+        return ''.join((
             make_commit_line(package, old, new, prefix=prefix or ''),
-            f'{addendum or ""}\n',
+            addendum,
         ))
 
 

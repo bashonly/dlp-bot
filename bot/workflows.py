@@ -121,10 +121,11 @@ def make_bulk_commit_message(
     prefix: str | None = None,
     addendum: str | None = None,
 ) -> str:
-    return '\n\n'.join((
+    return ''.join((
         make_bulk_commit_title(workflows, all_updates, prefix=prefix),
+        '\n\n',
         make_bulk_commit_body(all_updates),
-        f'{addendum or ""}\n',
+        f'\n\n{addendum}\n' if addendum else '\n',
     ))
 
 
@@ -146,7 +147,7 @@ def make_bulk_commit_title(
 
 
 def make_bulk_commit_body(all_updates: ActionsUpdateResult) -> str:
-    return '\n'.join(sorted(make_commit_line(action, old, new) for action, (old, new) in all_updates.items()))
+    return '\n'.join(sorted(make_action_commit_line(action, old, new) for action, (old, new) in all_updates.items()))
 
 
 def make_incremental_commit_message(
@@ -157,13 +158,13 @@ def make_incremental_commit_message(
     prefix: str | None = None,
     addendum: str | None = None,
 ) -> str:
-    return '\n\n'.join((
-        make_commit_line(action, old, new, prefix=prefix or ''),
-        f'{addendum or ""}\n',
+    return ''.join((
+        make_action_commit_line(action, old, new, prefix=prefix or ''),
+        f'\n\n{addendum}\n' if addendum else '\n',
     ))
 
 
-def make_commit_line(action: Action, old: ActionPin, new: ActionPin, *, prefix: str = '* ') -> str:
+def make_action_commit_line(action: Action, old: ActionPin, new: ActionPin, *, prefix: str = '* ') -> str:
     return f'{prefix}Bump {action} {old.tag} => {new.tag}'
 
 
