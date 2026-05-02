@@ -301,7 +301,7 @@ class EJSDependenciesUpdater(DependenciesUpdater):
                     md_new = md_new.lstrip('.')
 
             compare = ''
-            if github_info:
+            if github_info and old and new:
                 old_tag_matches = denormalized_tags(old)
                 new_tag_matches = denormalized_tags(new)
 
