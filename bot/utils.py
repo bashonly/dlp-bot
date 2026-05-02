@@ -135,7 +135,9 @@ def remove_around(data: str, before: str, after: str) -> str:
 
 
 def parse_owner_and_repo(value: str) -> tuple[str, str]:
-    owner, _, rest = value.partition('/')
+    """Forge-agnostic helper for parsing owner and repo"""
+    # urlparse and lstrip to handle full URLs
+    owner, _, rest = urllib.parse.urlparse(value).path.lstrip('/').partition('/')
     # partition again to handle values like 'github/codeql-action/init'
     return owner, rest.partition('/')[0]
 

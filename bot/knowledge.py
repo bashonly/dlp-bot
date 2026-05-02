@@ -74,18 +74,20 @@ SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
 
 GIT_FORGE = 'github'
 
-GIT_FORGES: dict[str, dict[str, dict[str, str]]] = {
+GIT_FORGES: dict[str, dict[str, typing.Any]] = {
     'github': {
         'remote_url_templates': {
             'ssh': 'git@github.com:{owner}/{repo}.git',
             'https': 'https://github.com/{owner}/{repo}.git',
         },
+        'workflows_directory': '.github/workflows',
     },
     'codeberg': {
         'remote_url_templates': {
             'ssh': 'git@codeberg.org:{owner}/{repo}.git',
             'https': 'https://codeberg.org/{owner}/{repo}.git',
         },
+        'workflows_directory': '.forgejo/workflows',
     },
 }
 

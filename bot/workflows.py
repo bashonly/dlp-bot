@@ -19,6 +19,8 @@ from bot.knowledge import (
     ACTIONS,
     BOT_BEGIN_HTML_TAG,
     BOT_END_HTML_TAG,
+    GIT_FORGE,
+    GIT_FORGES,
 )
 from bot.utils import (
     SHA1_PATTERN,
@@ -33,8 +35,6 @@ try:
 except ImportError:
     yaml = None
 
-
-WORKFLOWS_DIRECTORY = '.github/workflows'
 
 USES_RE_TMPL = r'\buses:\s+(?P<path>{label}(?:/[\w-]+)?)@(?P<sha>{sha})\s+#\s*(?P<tag>v?[0-9]+(?:\.[0-9]+)*)'
 
@@ -301,6 +301,7 @@ class ActionsUpdater:
         self.web = web
         self.repo_owner = repo_owner
         self.repo_name = repo_name
+        self.workflows_path = self.git.repo_path / GIT_FORGES[GIT_FORGE]['workflows_directory']
         self._exclude_newer = exclude_newer
 
         self._latest_cache: dict[Action, ActionPin] = {}
@@ -526,8 +527,10 @@ class ActionsUpdater:
             raise ValueError(f'invalid commit_type value: {commit_type}')
 
         starting_point = self.git.bot_rev_parse('HEAD')
-        gha_path = self.git.repo_path / WORKFLOWS_DIRECTORY
-        workflows = [Workflow(path) for path in itertools.chain(gha_path.glob('*.yml'), gha_path.glob('*.yaml'))]
+        workflows = [
+            Workflow(path)
+            for path in itertools.chain(self.workflows_path.glob('*.yml'), self.workflows_path.glob('*.yaml'))
+        ]
         all_updates = {}
 
         for workflow in workflows:
