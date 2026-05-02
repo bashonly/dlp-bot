@@ -29,8 +29,7 @@ SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
         'default_branch': 'main',
         'commit_prefix': None,
         'commit_addendum': None,
-        # TODO: 'dependencies'
-        'services': ['actions'],
+        'services': ['actions', 'dependencies'],
     },
     'protobug': {
         'forge': 'github',

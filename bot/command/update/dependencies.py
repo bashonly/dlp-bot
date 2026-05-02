@@ -21,11 +21,10 @@ from bot.command.common import (
     configure_remote_target_options,
     configure_update_options,
 )
+from bot.deps.common import DependenciesUpdateResult
 from bot.deps.dlp_bot import DLPBotDependenciesUpdater
-from bot.deps.python import (
-    PythonProject,
-    PythonUpdateResult,
-)
+from bot.deps.ejs import EJSDependenciesUpdater, EJSProject
+from bot.deps.python import PythonProject
 from bot.deps.yt_dlp import YTDLPDependenciesUpdater
 from bot.git import Git, GitError
 from bot.github import GitHubPullRequest, RelativeBranch
@@ -52,13 +51,13 @@ SUPPORTED_REPOS = [k for k, v in SERVICED_REPOS.items() if UPDATE_NAME in v['ser
 
 PROJECTS = {
     'dlp-bot': PythonProject,
-    # 'ejs': 'NodeProject',
+    'ejs': EJSProject,
     'yt-dlp': PythonProject,
 }
 
 UPDATERS = {
     'dlp-bot': DLPBotDependenciesUpdater,
-    # 'ejs': NodeDependenciesUpdater,
+    'ejs': EJSDependenciesUpdater,
     'yt-dlp': YTDLPDependenciesUpdater,
 }
 
@@ -124,7 +123,7 @@ def configure_parser(
     configure_logging_options(parser)
 
 
-def print_table(all_updates: PythonUpdateResult):
+def print_table(all_updates: DependenciesUpdateResult):
     for row in table_a_raza(
         ('package', 'old', 'new'), [(package, old or '', new or '') for package, (old, new) in all_updates.items()]
     ):

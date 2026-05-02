@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import collections.abc
-import contextlib
 import dataclasses
 import json
 import os
@@ -13,11 +12,15 @@ import subprocess
 import sys
 import tomllib
 import typing
-import urllib.error
+import urllib.parse
 
 from bot.deps.common import (
     DependenciesUpdater,
+    DependenciesUpdateResult,
     Project,
+    denormalized_tags,
+    make_commit_message,
+    package_diff_dict,
 )
 from bot.github import (
     GITHUB_URL_RE,
@@ -50,9 +53,6 @@ class UVError(BotError):
     pass
 
 
-type PythonUpdateResult = dict[str, tuple[str, str] | tuple[str, None] | tuple[None, str]]
-
-
 class PyPIAPICaller(BaseAPICaller):
     _API_BASE_URL = 'https://pypi.org/'
     _NOTE_PREFIX = 'pypi'
@@ -76,57 +76,6 @@ class PythonDependency:
     direct_reference: str | None
     specifier: str | None
     markers: str | None
-
-
-def make_commit_message(
-    all_updates: PythonUpdateResult,
-    *,
-    prefix: str | None = None,
-    addendum: str | None = None,
-) -> str:
-    if len(all_updates) > 1:
-        return '\n\n'.join((
-            make_commit_title(all_updates, prefix=prefix),
-            make_commit_body(all_updates),
-            f'{addendum or ""}\n',
-        ))
-    else:
-        package, (old, new) = next(iter(all_updates.items()))
-
-        return '\n\n'.join((
-            make_commit_line(package, old, new, prefix=prefix or ''),
-            f'{addendum or ""}\n',
-        ))
-
-
-def make_commit_title(all_updates: PythonUpdateResult, *, prefix: str | None = None) -> str:
-    count = len(all_updates)
-    return f'{prefix or ""}Update {count} dependenc{"ies" if count > 1 else "y"}'
-
-
-def make_commit_body(all_updates: PythonUpdateResult) -> str:
-    return '\n'.join(sorted(make_commit_line(package, old, new) for package, (old, new) in all_updates.items()))
-
-
-def make_commit_line(package: str, old: str | None, new: str | None, *, prefix: str = '* ') -> str:
-    if old is None:
-        return f'{prefix}Add {package} {new}'
-
-    if new is None:
-        return f'{prefix}Remove {package} {old}'
-
-    return f'{prefix}Bump {package} {old} => {new}'
-
-
-def denormalized_tags(tag: str) -> list[str]:
-    tags = [tag]
-    # De-normalize calver tags like 2024.1.1 back to 2024.01.01
-    if re.match(r'2[0-9]{3}\.[1-9]\.', tag) or re.match(r'2[0-9]{3}\.[0-9]{2}\.[1-9][^0-9]*', tag):
-        with contextlib.suppress(ValueError):
-            year, month, day = map(int, tag.split('.'))
-            tags.append(f'{year}.{month:02d}.{day:02d}')
-
-    return tags + [f'v{t}' for t in tags]
 
 
 def parse_version_from_dist(filename: str, name: str) -> str:
@@ -174,30 +123,6 @@ def parse_dependency(line: str) -> PythonDependency:
         specifier=specifier or None,
         markers=markers or None,
     )
-
-
-def package_diff_dict(old_dict: dict[str, str], new_dict: dict[str, str]) -> PythonUpdateResult:
-    """
-    @param old_dict: Dictionary w/ package names as keys and old package versions as values
-    @param new_dict: Dictionary w/ package names as keys and new package versions as values
-    @returns         Dictionary w/ package names as keys and tuples of (old_ver, new_ver) as values
-    """
-    ret_dict: PythonUpdateResult = {}
-
-    for name, new_version in new_dict.items():
-        if name not in old_dict:
-            ret_dict[name] = (None, new_version)
-            continue
-
-        old_version = old_dict[name]
-        if new_version != old_version:
-            ret_dict[name] = (old_version, new_version)
-
-    for name, old_version in old_dict.items():
-        if name not in new_dict:
-            ret_dict[name] = (old_version, None)
-
-    return ret_dict
 
 
 def get_lock_packages(lock: dict[str, typing.Any]) -> dict[str, str]:
@@ -497,7 +422,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         upgrade_only: str | None = None,
         verify: bool = False,
         **kwargs,
-    ) -> tuple[set[pathlib.Path], PythonUpdateResult]:
+    ) -> tuple[set[pathlib.Path], DependenciesUpdateResult]:
         # Stash original lockfile for package diff-ing post-update
         og_lockfile_toml = self.load_lockfile_toml()
 
@@ -555,7 +480,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         /,
         *,
         updated_paths: set[pathlib.Path],
-        all_updates: PythonUpdateResult,
+        all_updates: DependenciesUpdateResult,
         env: dict[str, str] | None,
         upgrade_arg: str,
         upgrade_only: str | None,
@@ -563,7 +488,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
     ):
         """To be optionally implemented by subclasses.
 
-        Runs after `uv lock` is executed and after the PythonUpdateResult has been populated.
+        Runs after `uv lock` is executed and after the DependenciesUpdateResult has been populated.
 
         Receives the `pre_upgrade_data` returned from _pre_upgrade() as a positional-only argument.
 
@@ -571,14 +496,14 @@ class PythonDependenciesUpdater(DependenciesUpdater):
 
         Can add `pathlib.Path`s to the `updated_paths` set as necessary.
 
-        Can mutate the `all_updates` PythonUpdateResult dict as necessary.
+        Can mutate the `all_updates` DependenciesUpdateResult dict as necessary.
         """
         pass
 
     def _generate_report(
         self,
         /,
-        all_updates: PythonUpdateResult,
+        all_updates: DependenciesUpdateResult,
     ) -> collections.abc.Iterator[str]:
         pypi = PyPIAPICaller(verbose=self.gh.verbose)
 
@@ -659,7 +584,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
     def _make_pull_request_description(
         self,
         /,
-        all_updates: PythonUpdateResult,
+        all_updates: DependenciesUpdateResult,
     ) -> str:
         return '\n'.join((
             f'{BOT_BEGIN_HTML_TAG}\n',
@@ -670,7 +595,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
     def parse_results(
         self,
         /,
-        all_updates: PythonUpdateResult,
+        all_updates: DependenciesUpdateResult,
         *,
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
