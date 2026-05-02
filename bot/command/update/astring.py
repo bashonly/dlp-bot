@@ -24,7 +24,7 @@ DEFAULT_HEAD = RelativeBranch(owner=DEFAULT_HEAD_OWNER, branch=DEFAULT_HEAD_BRAN
 def configure_parser(parser: argparse.ArgumentParser):
     bot.command.update.dependencies.configure_parser(
         parser,
-        force_repository='yt-dlp',
+        force_repository='ejs',
         upgrade_only='astring',
         default_head_label=DEFAULT_HEAD.label,
     )
