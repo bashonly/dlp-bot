@@ -195,6 +195,7 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         updated_paths.add(self.package_json_path)
 
         if self.node_modules_path.is_dir():
+            print('Removing node_modules', file=sys.stderr)
             shutil.rmtree(str(self.node_modules_path))
 
         # Generate base `package-lock.json`
