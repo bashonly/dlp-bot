@@ -195,8 +195,12 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         updated_paths.add(self.package_json_path)
 
         if self.node_modules_path.is_dir():
-            print('Removing node_modules', file=sys.stderr)
+            print('[bot] Removing node_modules', file=sys.stderr)
             shutil.rmtree(str(self.node_modules_path))
+
+        if self.package_lock_path.is_file():
+            print('[bot] Removing package-lock.json', file=sys.stderr)
+            self.package_lock_path.unlink()
 
         # Generate base `package-lock.json`
         self.npm('install')
