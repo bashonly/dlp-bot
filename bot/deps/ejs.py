@@ -209,13 +209,18 @@ class EJSDependenciesUpdater(DependenciesUpdater):
             print('[bot] Removing package-lock.json', file=sys.stderr)
             self.package_lock_path.unlink()
 
-        # Generate base `package-lock.json`
+        # Generate base package-lock.json
         self.npm('install')
         updated_paths.add(self.package_lock_path)
 
-        # Migrate to other package managers
+        # Import package-lock.json as pnpm-lock.yaml
         self.pnpm('import')
         updated_paths.add(self.pnpm_lock_path)
+
+        # Import package-lock.json as bun.lock
+        if self.bun_lock_path.is_file():
+            print('[bot] Removing bun.lock', file=sys.stderr)
+            self.bun_lock_path.unlink()
         self.bun('pm', 'migrate', '--force')
         updated_paths.add(self.bun_lock_path)
 
@@ -227,7 +232,7 @@ class EJSDependenciesUpdater(DependenciesUpdater):
 
         # Ensure that `deno.json` is the same as `package-lock.json`.
         # Note: you may need to manually update the `ADDITIONAL_PACKAGES_NODE`
-        # and/or `ADDITIONAL_PACKAGES_DENO` variables in `./check.py`.
+        # and/or `ADDITIONAL_PACKAGES_DENO` variables in the ejs reposistory's `./check.py`
         self.check()
 
         all_updates = package_diff_dict(
