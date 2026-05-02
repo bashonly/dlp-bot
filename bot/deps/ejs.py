@@ -29,7 +29,6 @@ from bot.knowledge import (
 from bot.utils import (
     BaseAPICaller,
     BotError,
-    VerificationError,
 )
 
 
@@ -185,9 +184,6 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         self.load_package_json = self.project.load_package_json
         self.load_package_lock = self.project.load_package_lock
 
-    def check(self, /):
-        self.project._run_exe(sys.executable, './check.py', exc=VerificationError, note='check')
-
     def wipe_node_modules(self, /):
         if self.node_modules_path.is_dir():
             print('[bot] Removing node_modules', file=sys.stderr)
@@ -216,29 +212,23 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         self.npm('install')
         updated_paths.add(self.package_lock_path)
 
-        # Import package-lock.json as pnpm-lock.yaml
+        # Generate new pnpm-lock.yaml from package-lock.json
         self.pnpm('import')
         updated_paths.add(self.pnpm_lock_path)
 
-        # Import package-lock.json as bun.lock
+        # Generate new bun.lock from package-lock.json
         if self.bun_lock_path.is_file():
             print('[bot] Removing bun.lock', file=sys.stderr)
             self.bun_lock_path.unlink()
         self.bun('pm', 'migrate', '--force')
+        # bun<1.2 writes a bun.lockb file instead of bun.lock
         if not self.bun_lock_path.is_file():
             raise BotError('bun.lock does not exist')
         updated_paths.add(self.bun_lock_path)
 
-        self.wipe_node_modules()
-
-        # Make sure to use a deno with lockfile v4 (<2.3)
+        # Generate deno.lock (use deno<2.3 to generate lockfile v4)
         self.deno('install')
         updated_paths.add(self.deno_lock_path)
-
-        # Ensure that `deno.json` is the same as `package-lock.json`.
-        # Note: you may need to manually update the `ADDITIONAL_PACKAGES_NODE`
-        # and/or `ADDITIONAL_PACKAGES_DENO` variables in the ejs reposistory's `./check.py`
-        self.check()
 
         all_updates = package_diff_dict(
             get_package_lock_packages(og_lockfile),
