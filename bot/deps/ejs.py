@@ -39,7 +39,7 @@ def get_package_lock_packages(package_lock: dict[str, typing.Any]) -> dict[str, 
         package_name.removeprefix('node_modules/'): package_info['version']
         for package_name, package_info in package_lock['packages'].items()
         # Omit nested deps, e.g.: node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch
-        if '/node_modules/' not in package_name
+        if package_name and '/node_modules/' not in package_name
     }
 
 
