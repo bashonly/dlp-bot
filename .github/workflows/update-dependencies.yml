@@ -1,7 +1,7 @@
 name: Update dependencies
 on:
   schedule:
-    - cron: '18 18 * * *'
+    - cron: '17 17 * * 2,4,6'
   workflow_dispatch:
 
 permissions: {}
@@ -13,7 +13,7 @@ concurrency:
 jobs:
   output_variables:
     name: Output variables
-    if: github.event_name != 'schedule' || vars.UPDATE_DEPENDENCIES_DAILY
+    if: github.event_name != 'schedule' || vars.UPDATE_DEPENDENCIES_CRON
     runs-on: ubuntu-latest
     outputs:
       default_head_branch: ${{ steps.variables.outputs.default_head_branch }}

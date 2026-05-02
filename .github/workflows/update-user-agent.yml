@@ -1,7 +1,7 @@
 name: Update user-agent (for yt-dlp)
 on:
   schedule:
-    - cron: '19 19 1 * *'
+    - cron: '20 20 1 * *'
   workflow_dispatch:
 
 permissions: {}
@@ -13,7 +13,7 @@ concurrency:
 jobs:
   output_variables:
     name: Output variables
-    if: github.event_name != 'schedule' || vars.UPDATE_USER_AGENT_MONTHLY
+    if: github.event_name != 'schedule' || vars.UPDATE_USER_AGENT_CRON
     runs-on: ubuntu-latest
     outputs:
       default_head_branch: ${{ steps.variables.outputs.default_head_branch }}
