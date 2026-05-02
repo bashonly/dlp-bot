@@ -1,4 +1,4 @@
-name: Update protobug
+name: Update protobug (for yt-dlp)
 on:
   workflow_dispatch:
 

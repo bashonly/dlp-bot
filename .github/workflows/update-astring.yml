@@ -1,11 +1,11 @@
-name: Update ejs (for yt-dlp)
+name: Update astring (for ejs)
 on:
   workflow_dispatch:
 
 permissions: {}
 
 concurrency:
-  group: update-ejs
+  group: update-astring
   cancel-in-progress: false
 
 jobs:
@@ -28,10 +28,10 @@ jobs:
 
       - name: Output variables
         id: variables
-        run: python -m bot tools variables ejs
+        run: python -m bot tools variables astring
 
-  update_ejs:
-    name: Update ejs (${{ matrix.repo }})
+  update_astring:
+    name: Update astring (${{ matrix.repo }})
     needs: [output_variables]
     permissions:
       contents: read
@@ -41,7 +41,7 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.output_variables.outputs.matrix) }}
     env:
-      HEAD_BRANCH: ${{ vars.UPDATE_EJS_BRANCH || needs.output_variables.outputs.default_head_branch }}
+      HEAD_BRANCH: ${{ vars.UPDATE_ASTRING_BRANCH || needs.output_variables.outputs.default_head_branch }}
       HEAD_OWNER: ${{ vars.HEAD_OWNER || needs.output_variables.outputs.default_head_owner }}
 
     steps:
@@ -72,13 +72,13 @@ jobs:
         with:
           python-version: "3.14"
 
-      - name: Run bot update ejs
+      - name: Run bot update astring
         env:
           GH_TOKEN: ${{ secrets.BOT_TOKEN }}
           WORKING_REPO: ${{ matrix.repo }}
         run: |
           cd dlp-bot
-          python -m bot update ejs \
+          python -m bot update astring \
             --pr \
             --verbose \
             --git-protocol https \

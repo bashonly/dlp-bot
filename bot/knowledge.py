@@ -6,8 +6,10 @@ DEFAULT_HEAD_OWNER = 'dlp-bot'
 
 DEFAULT_HEAD_BRANCHES = {
     'actions': 'bot/update-actions',
+    'astring': 'bot/update-astring',
     'dependencies': 'bot/update-dependencies',
     'ejs': 'bot/update-ejs',
+    'meriyah': 'bot/update-meriyah',
     'protobug': 'bot/update-protobug',
     'user-agent': 'bot/update-user-agent',
 }
@@ -29,7 +31,7 @@ SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
         'default_branch': 'main',
         'commit_prefix': None,
         'commit_addendum': None,
-        'services': ['actions', 'dependencies'],
+        'services': ['actions', 'astring', 'dependencies', 'meriyah'],
     },
     'protobug': {
         'forge': 'github',

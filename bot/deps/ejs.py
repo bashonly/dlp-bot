@@ -244,6 +244,8 @@ class EJSDependenciesUpdater(DependenciesUpdater):
     def update(
         self,
         /,
+        *,
+        upgrade_only: str | None = None,
         **kwargs,
     ) -> tuple[set[pathlib.Path], DependenciesUpdateResult]:
         # Stash original lockfile for package diff-ing post-update
@@ -251,8 +253,8 @@ class EJSDependenciesUpdater(DependenciesUpdater):
 
         updated_paths: set[pathlib.Path] = set()
 
-        # Upgrade packages
-        self.pnpm('upgrade', '--latest')
+        # Upgrade package(s)
+        self.pnpm('upgrade', '--latest', upgrade_only if upgrade_only else '--dev')
         updated_paths.add(self.package_json_path)
 
         if self.node_modules_path.is_dir():

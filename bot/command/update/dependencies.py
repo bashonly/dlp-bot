@@ -63,7 +63,7 @@ UPDATERS = {
 
 assert all((repo in PROJECTS and repo in UPDATERS) for repo in SUPPORTED_REPOS)
 
-UPGRADE_ONLY_PACKAGES = ('protobug', 'yt-dlp-ejs')
+UPGRADE_ONLY_PACKAGES = ('astring', 'meriyah', 'protobug', 'yt-dlp-ejs')
 
 
 def configure_parser(
