@@ -112,6 +112,10 @@ class EJSProject(Project):
 
         return location
 
+    def load_package_json(self, /) -> dict[str, typing.Any]:
+        with self.package_json_path.open('rb') as f:
+            return json.load(f)
+
     def load_package_lock(self, /) -> dict[str, typing.Any]:
         if not self.package_lock_path.is_file():
             return {}
@@ -180,6 +184,7 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         self.deno_lock_path = self.project.deno_lock_path
         self.pnpm_lock_path = self.project.pnpm_lock_path
         self.node_modules_path = self.project.node_modules_path
+        self.load_package_json = self.project.load_package_json
         self.load_package_lock = self.project.load_package_lock
 
     def check(self, /):
@@ -326,9 +331,22 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         /,
         all_updates: DependenciesUpdateResult,
     ) -> str:
+        package_json_deps = self.load_package_json()['dependencies']
+        dependencies: DependenciesUpdateResult = {}
+        dev_dependencies: DependenciesUpdateResult = {}
+
+        for package_name, diff_tuple in all_updates.items():
+            if package_name in package_json_deps:
+                dependencies[package_name] = diff_tuple
+            else:
+                dev_dependencies[package_name] = diff_tuple
+
         return '\n'.join((
             f'{BOT_BEGIN_HTML_TAG}\n',
-            *self._generate_report(all_updates),
+            '## Dependencies\n',
+            *self._generate_report(dependencies),
+            '## Development dependencies\n',
+            *self._generate_report(dev_dependencies),
             f'\n{BOT_END_HTML_TAG}\n\n',
         ))
 
