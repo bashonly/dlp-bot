@@ -361,12 +361,10 @@ class EJSDependenciesUpdater(DependenciesUpdater):
             if github_info and old and new:
                 cache = gh_tags_cache.setdefault((github_info['owner'], github_info['repo']), [])
 
-                tag_prefixes = ['v']
+                tag_prefixes = [github_info.get('tag_prefix') or 'v']
                 # Match tag prefix for monorepo packages, e.g. `core-v1.0.0` for `@humanfs/core`
                 if basename := package.partition('/')[2]:
                     tag_prefixes.append(f'{basename}-v')
-                if github_info.get('tag_prefix'):
-                    tag_prefixes.append(github_info['tag_prefix'])
 
                 old_tag_matches = denormalized_tags(old, *tag_prefixes)
                 new_tag_matches = denormalized_tags(new, *tag_prefixes)
@@ -403,7 +401,7 @@ class EJSDependenciesUpdater(DependenciesUpdater):
                 md_old,
                 md_new,
                 compare,
-                f'[**link**](<{homepage_url}>)' if homepage_url else '',
+                f'[link](<{homepage_url}>)' if homepage_url else '',
             ))
 
     def _make_pull_request_description(

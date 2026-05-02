@@ -100,6 +100,10 @@ PYTHON_PACKAGES: dict[str, dict[str, str]] = {
 NPM_PACKAGES: dict[str, dict[str, str]] = {
     # no tags on GH
     'bun-types': {},
+    '@types/bun': {},
+    '@types/esrecurse': {},
+    '@types/node': {},
+    '@types/react': {},
     # eslint/js monorepo packages
     'eslint-scope': {'owner': 'eslint', 'repo': 'js', 'tag_prefix': 'eslint-scope-v'},
     'eslint-visitor-keys': {'owner': 'eslint', 'repo': 'js', 'tag_prefix': 'eslint-visitor-keys-v'},
