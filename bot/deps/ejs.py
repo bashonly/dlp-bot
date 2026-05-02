@@ -36,7 +36,8 @@ from bot.utils import (
 def get_package_lock_packages(package_lock: dict[str, typing.Any]) -> dict[str, str]:
     return {
         package_name.removeprefix('node_modules/'): package_info['version']
-        for package_name, package_info in package_lock.items()
+        for package_name, package_info in package_lock['packages'].items()
+        if package_name
     }
 
 
