@@ -254,7 +254,14 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         updated_paths: set[pathlib.Path] = set()
 
         # Upgrade package(s)
-        self.pnpm('upgrade', '--latest', upgrade_only if upgrade_only else '--dev')
+        if upgrade_only:
+            old_version = self.load_package_json()['dependencies'][upgrade_only]
+            self.pnpm('upgrade', '--latest', upgrade_only)
+            new_version = self.load_package_json()['dependencies'][upgrade_only]
+            if old_version == new_version:
+                return updated_paths, {}
+        else:
+            self.pnpm('upgrade', '--latest', '--dev')
         updated_paths.add(self.package_json_path)
 
         if self.node_modules_path.is_dir():
