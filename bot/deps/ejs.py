@@ -365,6 +365,8 @@ class EJSDependenciesUpdater(DependenciesUpdater):
                 # Match tag prefix for monorepo packages, e.g. `core-v1.0.0` for `@humanfs/core`
                 if basename := package.partition('/')[2]:
                     tag_prefixes.append(f'{basename}-v')
+                if github_info.get('tag_prefix'):
+                    tag_prefixes.append(github_info['tag_prefix'])
 
                 old_tag_matches = denormalized_tags(old, *tag_prefixes)
                 new_tag_matches = denormalized_tags(new, *tag_prefixes)

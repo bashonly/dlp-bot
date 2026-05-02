@@ -98,7 +98,12 @@ PYTHON_PACKAGES: dict[str, dict[str, str]] = {
 }
 
 NPM_PACKAGES: dict[str, dict[str, str]] = {
+    # no tags on GH
     'bun-types': {},
+    # eslint/js monorepo packages
+    'eslint-scope': {'owner': 'eslint', 'repo': 'js', 'tag_prefix': 'eslint-scope-v'},
+    'eslint-visitor-keys': {'owner': 'eslint', 'repo': 'js', 'tag_prefix': 'eslint-visitor-keys-v'},
+    'espree': {'owner': 'eslint', 'repo': 'js', 'tag_prefix': 'espree-v'},
 }
 
 ACTIONS: dict[str, dict[str, typing.Any]] = {
