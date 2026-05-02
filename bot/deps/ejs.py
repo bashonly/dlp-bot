@@ -241,11 +241,6 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         self.load_package_json = self.project.load_package_json
         self.load_package_lock = self.project.load_package_lock
 
-    def wipe_node_modules(self, /):
-        if self.node_modules_path.is_dir():
-            print('[bot] Removing node_modules', file=sys.stderr)
-            shutil.rmtree(str(self.node_modules_path))
-
     def update(
         self,
         /,
@@ -260,7 +255,10 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         self.pnpm('upgrade', '--latest')
         updated_paths.add(self.package_json_path)
 
-        self.wipe_node_modules()
+        if self.node_modules_path.is_dir():
+            print('[bot] Removing node_modules', file=sys.stderr)
+            shutil.rmtree(str(self.node_modules_path))
+
         if self.package_lock_path.is_file():
             print('[bot] Removing package-lock.json', file=sys.stderr)
             self.package_lock_path.unlink()
