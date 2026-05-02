@@ -268,7 +268,7 @@ class EJSDependenciesUpdater(DependenciesUpdater):
             print('[bot] Removing node_modules', file=sys.stderr)
             shutil.rmtree(str(self.node_modules_path))
 
-        if self.package_lock_path.is_file():
+        if not upgrade_only and self.package_lock_path.is_file():
             print('[bot] Removing package-lock.json', file=sys.stderr)
             self.package_lock_path.unlink()
 
