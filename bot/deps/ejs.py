@@ -251,10 +251,18 @@ class EJSDependenciesUpdater(DependenciesUpdater):
             homepage_url = metadata.get('homepage') or f'https://www.npmjs.com/package/{package}'
 
             project_urls = [homepage_url]
-            if (bugs := metadata.get('bugs')) and (bugs_url := bugs.get('url')):
-                project_urls.append(bugs_url)
-            if (repository := metadata.get('repository')) and (repo_url := repository.get('url')):
-                project_urls.append(repo_url)
+
+            if bugs := metadata.get('bugs'):
+                if isinstance(bugs, dict) and (bugs_url := bugs.get('url')):
+                    project_urls.append(bugs_url)
+                elif isinstance(bugs, str):
+                    project_urls.append(bugs)
+
+            if repository := metadata.get('repository'):
+                if isinstance(repository, dict) and (repo_url := repository.get('url')):
+                    project_urls.append(repo_url)
+                elif isinstance(repository, str):
+                    project_urls.append(repository)
 
             github_info = next(
                 (mobj.groupdict() for url in project_urls if (mobj := GITHUB_URL_RE.search(url))),
