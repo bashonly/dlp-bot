@@ -88,13 +88,17 @@ GIT_FORGES: dict[str, dict[str, dict[str, str]]] = {
 }
 
 # XXX: keep 'pyinstaller[*]' keys in sync with bot.deps.yt_dlp.PYINSTALLER_BUILDS_TARGETS values
-PYTHON_PACKAGES = {
+PYTHON_PACKAGES: dict[str, dict[str, str]] = {
     'deno': {'owner': 'denoland', 'repo': 'deno'},
     'protobug': {'owner': 'yt-dlp', 'repo': 'protobug'},
     'pyinstaller[win_amd64]': {'owner': 'pyinstaller', 'repo': 'pyinstaller'},
     'pyinstaller[win32]': {'owner': 'pyinstaller', 'repo': 'pyinstaller'},
     'pyinstaller[win_arm64]': {'owner': 'pyinstaller', 'repo': 'pyinstaller'},
     'yt-dlp-ejs': {'owner': 'yt-dlp', 'repo': 'ejs'},
+}
+
+NPM_PACKAGES: dict[str, dict[str, str]] = {
+    'bun-types': {},
 }
 
 ACTIONS: dict[str, dict[str, typing.Any]] = {

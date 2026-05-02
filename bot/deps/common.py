@@ -31,7 +31,7 @@ def package_diff_dict(old_dict: dict[str, str], new_dict: dict[str, str]) -> Dep
     return ret_dict
 
 
-def denormalized_tags(tag: str) -> list[str]:
+def denormalized_tags(tag: str, *prefixes: str) -> list[str]:
     tags = [tag]
     # De-normalize calver tags like 2024.1.1 back to 2024.01.01
     if re.match(r'2[0-9]{3}\.[1-9]\.', tag) or re.match(r'2[0-9]{3}\.[0-9]{2}\.[1-9][^0-9]*', tag):
@@ -39,7 +39,7 @@ def denormalized_tags(tag: str) -> list[str]:
             year, month, day = map(int, tag.split('.'))
             tags.append(f'{year}.{month:02d}.{day:02d}')
 
-    return tags + [f'v{t}' for t in tags]
+    return tags + [f'{prefix}{t}' for t in tags for prefix in prefixes]
 
 
 def make_commit_message(

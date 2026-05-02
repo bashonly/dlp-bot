@@ -553,8 +553,8 @@ class PythonDependenciesUpdater(DependenciesUpdater):
 
             compare = ''
             if github_info and old and new:
-                old_tag_matches = denormalized_tags(old)
-                new_tag_matches = denormalized_tags(new)
+                old_tag_matches = denormalized_tags(old, 'v')
+                new_tag_matches = denormalized_tags(new, 'v')
 
                 tags_list = self.gh.paginated_results(
                     self.gh.list_repository_tags,

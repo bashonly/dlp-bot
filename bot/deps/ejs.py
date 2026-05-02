@@ -26,6 +26,7 @@ from bot.github import (
 from bot.knowledge import (
     BOT_BEGIN_HTML_TAG,
     BOT_END_HTML_TAG,
+    NPM_PACKAGES,
 )
 from bot.utils import (
     BaseAPICaller,
@@ -304,33 +305,38 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         if not updates:
             return
 
+        gh_tags_cache: dict[tuple[str, str], list[str]] = {}
+
         if header:
             yield f'## {header}\n'
 
-        yield 'package | old | new | diff'
-        yield '--------|-----|-----|-----'
+        yield 'package | old | new | diff | homepage'
+        yield '--------|-----|-----|------|---------'
         for package, (old, new) in sorted(updates.items()):
             metadata = npm_api.get_package_metadata(package)
-            homepage_url = metadata.get('homepage') or f'https://www.npmjs.com/package/{package}'
+            homepage_url = metadata.get('homepage') or ''
 
-            project_urls = [homepage_url]
+            if package in NPM_PACKAGES:
+                github_info = NPM_PACKAGES[package]
+            else:
+                project_urls = [homepage_url]
 
-            if bugs := metadata.get('bugs'):
-                if isinstance(bugs, dict) and (bugs_url := bugs.get('url')):
-                    project_urls.append(bugs_url)
-                elif isinstance(bugs, str):
-                    project_urls.append(bugs)
+                if bugs := metadata.get('bugs'):
+                    if isinstance(bugs, dict) and (bugs_url := bugs.get('url')):
+                        project_urls.append(bugs_url)
+                    elif isinstance(bugs, str):
+                        project_urls.append(bugs)
 
-            if repository := metadata.get('repository'):
-                if isinstance(repository, dict) and (repo_url := repository.get('url')):
-                    project_urls.append(repo_url)
-                elif isinstance(repository, str):
-                    project_urls.append(repository)
+                if repository := metadata.get('repository'):
+                    if isinstance(repository, dict) and (repo_url := repository.get('url')):
+                        project_urls.append(repo_url)
+                    elif isinstance(repository, str):
+                        project_urls.append(repository)
 
-            github_info = next(
-                (mobj.groupdict() for url in project_urls if (mobj := GITHUB_URL_RE.search(url))),
-                {},
-            )
+                github_info = next(
+                    (mobj.groupdict() for url in project_urls if (mobj := GITHUB_URL_RE.search(url))),
+                    {},
+                )
 
             md_old = old = old or ''
             md_new = new = new or ''
@@ -353,18 +359,34 @@ class EJSDependenciesUpdater(DependenciesUpdater):
 
             compare = ''
             if github_info and old and new:
-                old_tag_matches = denormalized_tags(old)
-                new_tag_matches = denormalized_tags(new)
+                cache = gh_tags_cache.setdefault((github_info['owner'], github_info['repo']), [])
 
-                tags_list = self.gh.paginated_results(
-                    self.gh.list_repository_tags,
-                    github_info['owner'],
-                    github_info['repo'],
-                    searches=[{'name': old_tag_matches}, {'name': new_tag_matches}],
-                )
+                tag_prefixes = ['v']
+                # Match tag prefix for monorepo packages, e.g. `core-v1.0.0` for `@humanfs/core`
+                if basename := package.partition('/')[2]:
+                    tag_prefixes.append(f'{basename}-v')
 
-                old_tag = next((tag['name'] for tag in tags_list if tag['name'] in old_tag_matches), None)
-                new_tag = next((tag['name'] for tag in tags_list if tag['name'] in new_tag_matches), None)
+                old_tag_matches = denormalized_tags(old, *tag_prefixes)
+                new_tag_matches = denormalized_tags(new, *tag_prefixes)
+
+                old_tag = next((tag for tag in cache if tag in old_tag_matches), None)
+                new_tag = next((tag for tag in cache if tag in new_tag_matches), None)
+
+                if not (old_tag and new_tag):
+                    tags_list = self.gh.paginated_results(
+                        self.gh.list_repository_tags,
+                        github_info['owner'],
+                        github_info['repo'],
+                        searches=[{'name': old_tag_matches}, {'name': new_tag_matches}],
+                    )
+
+                    old_tag = next((tag['name'] for tag in tags_list if tag['name'] in old_tag_matches), None)
+                    if old_tag:
+                        cache.append(old_tag)
+
+                    new_tag = next((tag['name'] for tag in tags_list if tag['name'] in new_tag_matches), None)
+                    if new_tag:
+                        cache.append(new_tag)
 
                 github_url = 'https://github.com/{owner}/{repo}'.format(**github_info)
                 if new_tag:
@@ -375,10 +397,11 @@ class EJSDependenciesUpdater(DependenciesUpdater):
                     compare = f'[`{old_tag}...{new_tag}`](<{github_url}/compare/{old_tag}...{new_tag}>)'
 
             yield ' | '.join((
-                f'[**`{package}`**](<{homepage_url}>)',
+                f'[**`{package}`**](<https://www.npmjs.com/package/{package}>)',
                 md_old,
                 md_new,
                 compare,
+                f'[**link**](<{homepage_url}>)' if homepage_url else '',
             ))
 
     def _make_pull_request_description(
