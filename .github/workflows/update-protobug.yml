@@ -72,6 +72,11 @@ jobs:
         with:
           python-version: "3.14"
 
+      - name: Install Python requirements
+        run: |
+          python -m pip install -U --require-hashes -r "dlp-bot/requirements/pip.txt"
+          python -m pip install -U --require-hashes -r "dlp-bot/requirements/update-dependencies.txt"
+
       - name: Run bot update protobug
         env:
           GH_TOKEN: ${{ secrets.BOT_TOKEN }}

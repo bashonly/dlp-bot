@@ -72,6 +72,35 @@ jobs:
         with:
           python-version: "3.14"
 
+      - name: Install Python requirements
+        run: |
+          python -m pip install -U --require-hashes -r "dlp-bot/requirements/pip.txt"
+          python -m pip install -U --require-hashes -r "dlp-bot/requirements/update-dependencies.txt"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5.0.0
+        with:
+          version: "10"
+
+      - name: Install Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f  # v6.3.0
+        with:
+          # minimum supported version
+          node-version: "20.0"
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
+        with:
+          # need bun 1.2+ for migrating package-lock.json to bun.lock
+          bun-version: "1.2"
+          no-cache: true
+
+      - name: Install Deno
+        uses: denoland/setup-deno@e95548e56dfa95d4e1a28d6f422fafe75c4c26fb  # v2.0.3
+        with:
+          # minimum supported version
+          deno-version: "2.0.0"
+
       - name: Run bot update meriyah
         env:
           GH_TOKEN: ${{ secrets.BOT_TOKEN }}
