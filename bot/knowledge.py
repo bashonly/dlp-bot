@@ -49,7 +49,7 @@ SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
         'default_branch': 'master',
         'commit_prefix': None,
         'commit_addendum': None,
-        'services': ['actions'],
+        'services': ['actions', 'dependencies'],
     },
     'manylinux-shared': {
         'forge': 'github',

@@ -52,12 +52,14 @@ SUPPORTED_REPOS = [k for k, v in SERVICED_REPOS.items() if UPDATE_NAME in v['ser
 PROJECTS = {
     'dlp-bot': PythonProject,
     'ejs': EJSProject,
+    'Pyinstaller-Builds': PythonProject,
     'yt-dlp': PythonProject,
 }
 
 UPDATERS = {
     'dlp-bot': DLPBotDependenciesUpdater,
     'ejs': EJSDependenciesUpdater,
+    'Pyinstaller-Builds': DLPBotDependenciesUpdater,
     'yt-dlp': YTDLPDependenciesUpdater,
 }
 
