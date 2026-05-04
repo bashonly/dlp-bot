@@ -132,13 +132,13 @@ def get_lock_packages(lock: dict[str, typing.Any]) -> dict[str, str]:
 type PyprojectTable = dict[str, str | bool | int | float] | dict[str, list[str]]
 
 
-def get_dependencies(pyproject_toml: dict[str, typing.Any]) -> PyprojectTable:
-    return pyproject_toml['project']['dependencies']
+def get_dependencies(pyproject_toml: dict[str, typing.Any]) -> list[str]:
+    return pyproject_toml['project'].get('dependencies', [])
 
 
 def get_extras(pyproject_toml: dict[str, typing.Any], *, resolve: bool = True) -> PyprojectTable:
     project_table = pyproject_toml['project']
-    extras = project_table['optional-dependencies']
+    extras = project_table.get('optional-dependencies', {})
     if not resolve:
         return extras
 
@@ -156,7 +156,7 @@ def get_extras(pyproject_toml: dict[str, typing.Any], *, resolve: bool = True) -
 
 
 def get_groups(pyproject_toml: dict[str, typing.Any], *, resolve: bool = True) -> PyprojectTable:
-    groups = pyproject_toml['dependency-groups']
+    groups = pyproject_toml.get('dependency-groups', {})
     if not resolve:
         return groups
 
