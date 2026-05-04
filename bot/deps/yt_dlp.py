@@ -16,6 +16,7 @@ from bot.deps.python import (
     EXTRAS_TABLE,
     PythonDependenciesUpdater,
     get_extras,
+    get_groups,
     parse_dependency,
 )
 from bot.utils import (
@@ -32,9 +33,6 @@ PINNED_EXTRAS = {
     'pin-secretstorage': 'secretstorage',
     'pin-deno': 'deno',
 }
-
-EXPORT_GROUPS = ('build',)
-COMPILE_PACKAGES = ('pip',)
 
 EJS_ASSETS = {
     'yt.solver.lib.js': False,
@@ -273,32 +271,13 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
             updated_paths.add(requirements_path)
 
         # Export group requirements; any updates to these are already recorded w/ uv.lock package diff
-        for group in EXPORT_GROUPS:
+        for group in get_groups(self.load_pyproject_toml(), resolve=False):
             requirements_path = self._requirements_path / REQS_OUTPUT_TMPL.format(group)
             self.uv_export(
                 groups=[group],
                 output_file=requirements_path,
             )
             updated_paths.add(requirements_path)
-
-        # Compile requirements for single packages; need to compare before & after .txt's for reporting
-        for package in COMPILE_PACKAGES:
-            requirements_path = self._requirements_path / REQS_OUTPUT_TMPL.format(package)
-            if requirements_path.is_file():
-                old_requirements_txt = requirements_path.read_text()
-            else:
-                old_requirements_txt = ''
-
-            self.uv_pip_compile(
-                upgrade_arg,
-                input_line=package,
-                env=env,
-                output_file=requirements_path,
-            )
-            updated_paths.add(requirements_path)
-
-            new_requirements_txt = requirements_path.read_text()
-            all_updates.update(evaluate_requirements_txt(old_requirements_txt, new_requirements_txt))
 
         # Generate new pinned extras; any updates to these are already recorded w/ uv.lock package diff
         for pinned_name, extra_name in PINNED_EXTRAS.items():
