@@ -62,9 +62,17 @@ class BuildTarget:
 
 
 BUNDLE_TARGETS = {
-    'default': BuildTarget(extras=['default']),
-    'curl-cffi': BuildTarget(extras=['default', 'curl-cffi']),
-    'linux': BuildTarget(extras=['default', 'curl-cffi', 'secretstorage']),
+    'default': BuildTarget(
+        extras=['default'],
+        # PyPy bundles cffi, which is a transitive dep of brotlicffi, which is only required for PyPy
+        prune_packages=['cffi'],
+    ),
+    'curl-cffi': BuildTarget(
+        extras=['default', 'curl-cffi'],
+    ),
+    'linux': BuildTarget(
+        extras=['default', 'curl-cffi', 'secretstorage'],
+    ),
     'macos': BuildTarget(
         extras=['default', 'curl-cffi'],
         # NB: Resolve delocate and PyInstaller together since they share dependencies
@@ -245,6 +253,26 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
                     # NB: this depends on 'pyinstaller[asset_tag]' keys in bot.knowledge.PYTHON_PACKAGES
                     all_updates.update({f'pyinstaller[{asset_tag}]': pyinstaller_diff})
 
+        # Generate new pinned extras; any updates to these are already recorded w/ uv.lock package diff
+        for pinned_name, extra_name in PINNED_EXTRAS.items():
+            extras[pinned_name] = self.uv_export(
+                extras=[extra_name],
+                bare=True,
+                # PyPy bundles cffi, which is a transitive dep of brotlicffi, which is only required for PyPy
+                prune_packages=['cffi'] if extra_name == 'default' else [],
+            )
+
+        # Write the finalized pyproject.toml
+        self.replace_pyproject_toml_table_and_write(
+            table_name=EXTRAS_TABLE,
+            table_dict=extras,
+        )
+        updated_paths.add(self.pyproject_path)
+
+        # Generate/upgrade final lockfile that includes pinned extras
+        self.uv('lock', upgrade_arg, env=env)
+        updated_paths.add(self.lockfile_path)
+
         # Export bundle requirements; any updates to these are already recorded w/ uv.lock package diff
         for target_suffix, target in BUNDLE_TARGETS.items():
             requirements_path = self._requirements_path / REQS_OUTPUT_TMPL.format(target_suffix)
@@ -265,21 +293,6 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
                 output_file=requirements_path,
             )
             updated_paths.add(requirements_path)
-
-        # Generate new pinned extras; any updates to these are already recorded w/ uv.lock package diff
-        for pinned_name, extra_name in PINNED_EXTRAS.items():
-            extras[pinned_name] = self.uv_export(extras=[extra_name], bare=True)
-
-        # Write the finalized pyproject.toml
-        self.replace_pyproject_toml_table_and_write(
-            table_name=EXTRAS_TABLE,
-            table_dict=extras,
-        )
-        updated_paths.add(self.pyproject_path)
-
-        # Generate/upgrade final lockfile that includes pinned extras
-        self.uv('lock', upgrade_arg, env=env)
-        updated_paths.add(self.lockfile_path)
 
     def update_ejs(self, /) -> set[pathlib.Path]:
         PACKAGE_NAME = 'yt-dlp-ejs'
