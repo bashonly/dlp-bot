@@ -129,14 +129,11 @@ def get_lock_packages(lock: dict[str, typing.Any]) -> dict[str, str]:
     return {package['name']: package['version'] for package in lock['package'] if package.get('version')}
 
 
-type PyprojectTable = dict[str, str | bool | int | float] | dict[str, list[str]]
-
-
 def get_dependencies(pyproject_toml: dict[str, typing.Any]) -> list[str]:
     return pyproject_toml['project'].get('dependencies', [])
 
 
-def get_extras(pyproject_toml: dict[str, typing.Any], *, resolve: bool = True) -> PyprojectTable:
+def get_extras(pyproject_toml: dict[str, typing.Any], *, resolve: bool = True) -> dict[str, typing.Any]:
     project_table = pyproject_toml['project']
     extras = project_table.get('optional-dependencies', {})
     if not resolve:
@@ -155,7 +152,7 @@ def get_extras(pyproject_toml: dict[str, typing.Any], *, resolve: bool = True) -
     return {extra_name: list(yield_deps_from_extra(extra)) for extra_name, extra in extras.items()}
 
 
-def get_groups(pyproject_toml: dict[str, typing.Any], *, resolve: bool = True) -> PyprojectTable:
+def get_groups(pyproject_toml: dict[str, typing.Any], *, resolve: bool = True) -> dict[str, typing.Any]:
     groups = pyproject_toml.get('dependency-groups', {})
     if not resolve:
         return groups
@@ -172,7 +169,7 @@ def get_groups(pyproject_toml: dict[str, typing.Any], *, resolve: bool = True) -
 
 def _generate_table_lines(
     table_name: str,
-    table_dict: PyprojectTable,
+    table_dict: dict[str, typing.Any],
 ) -> collections.abc.Iterator[str]:
     SUPPORTED_TYPES = (str, bool, int, float, list)
 
@@ -204,7 +201,7 @@ def _generate_table_lines(
 def replace_toml_table_text(
     toml_text: str,
     table_name: str,
-    table_dict: PyprojectTable,
+    table_dict: dict[str, typing.Any],
 ) -> collections.abc.Generator[str]:
     INSIDE = 1
     BEYOND = 2
@@ -368,7 +365,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         self,
         /,
         table_name: str,
-        table_dict: PyprojectTable,
+        table_dict: dict[str, typing.Any],
     ):
         pyproject_text = self.pyproject_path.read_text()
 
