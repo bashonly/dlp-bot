@@ -196,7 +196,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
                 'yt-dlp-ejs': self.update_ejs,
             }[upgrade_only]()
 
-        extras = get_extras(self.load_pyproject_toml(), resolve=False)
+        extras = get_extras(self.load_pyproject_toml())
 
         # Remove pinned extras so they don't muck up the lockfile during generation/upgrade
         for pinned_extra_name in PINNED_EXTRAS:
