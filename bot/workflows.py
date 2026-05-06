@@ -202,11 +202,17 @@ def generate_actions_report(all_updates: ActionsUpdateResult) -> collections.abc
         md_new = ('v' if new.tag.startswith('v') else '') + md_new.lstrip('.')
         github_url = f'https://github.com/{action}'
 
+        # temporary actionlint hack
+        if action == ACTIONLINT_ACTION:
+            compare = f'[`{old.tag[:7]}...{new.tag[:7]}`](<{github_url}/compare/{old.tag}...{new.tag}>)'
+        else:
+            compare = f'[`{old.sha[:7]}...{new.sha[:7]}`](<{github_url}/compare/{old.sha}...{new.sha}>)'
+
         yield ' | '.join((
             f'[**`{action}`**](<{github_url}>)',
             f'[{md_old}](<{github_url}/releases/tag/{old.tag}>)',
             f'[{md_new}](<{github_url}/releases/tag/{new.tag}>)',
-            f'[`{old.sha[:7]}...{new.sha[:7]}`](<{github_url}/compare/{old.sha}...{new.sha}>)',
+            compare,
         ))
 
 
