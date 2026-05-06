@@ -104,8 +104,17 @@ def get_tag_from_comment(action: Action, sha: str, workflow_text: str) -> str:
     return mobj.group('tag')
 
 
-def make_pull_request_description(workflows: list[Workflow], all_updates: ActionsUpdateResult) -> str:
+def make_pull_request_description(
+    workflows: list[Workflow],
+    all_updates: ActionsUpdateResult,
+    *,
+    prefix: str | None = None,
+    addendum: str | None = None,
+) -> str:
     return '\n'.join((
+        '<!--\n',
+        make_bulk_commit_message(workflows, all_updates, prefix=prefix, addendum=addendum),
+        '\n-->\n',
         f'{BOT_BEGIN_HTML_TAG}\n',
         *generate_actions_report(all_updates),
         '',
@@ -643,4 +652,7 @@ class ActionsUpdater:
                 addendum=commit_addendum,
             )
 
-        return make_pull_request_description(workflows, all_updates), commit_message
+        return (
+            make_pull_request_description(workflows, all_updates, prefix=commit_prefix, addendum=commit_addendum),
+            commit_message,
+        )
