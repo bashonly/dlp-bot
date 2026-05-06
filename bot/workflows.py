@@ -204,7 +204,7 @@ def generate_actions_report(all_updates: ActionsUpdateResult) -> collections.abc
 
         # temporary actionlint hack
         if action == ACTIONLINT_ACTION:
-            compare = f'[`{old.tag[:7]}...{new.tag[:7]}`](<{github_url}/compare/{old.tag}...{new.tag}>)'
+            compare = f'[`v{old.tag[:7]}...v{new.tag[:7]}`](<{github_url}/compare/v{old.tag}...v{new.tag}>)'
         else:
             compare = f'[`{old.sha[:7]}...{new.sha[:7]}`](<{github_url}/compare/{old.sha}...{new.sha}>)'
 
