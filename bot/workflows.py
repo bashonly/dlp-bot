@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections.abc
+import contextlib
 import dataclasses
 import datetime as dt
 import itertools
@@ -85,6 +86,12 @@ ACTIONLINT_RE = re.compile(r"""(?x)
 def parse_gha_uses_value(uses_value: str) -> tuple[str, str]:
     action_value, _, commit_sha = uses_value.partition('@')
     return action_value, commit_sha
+
+
+def get_major_version(tag: str) -> int:
+    with contextlib.suppress(TypeError, ValueError):
+        return int(tag.removeprefix('v').split('.')[0])
+    return 0
 
 
 def release_is_too_hot(release: dict[str, typing.Any], cooldown: dt.datetime | None) -> bool:
@@ -466,8 +473,10 @@ class ActionsUpdater:
     def get_latest_action_pin(
         self,
         /,
-        action: Action,
+        current_pin: ActionPin,
     ) -> ActionPin:
+        action = current_pin.action
+
         if action in self._latest_cache:
             return self._latest_cache[action]
 
@@ -501,9 +510,12 @@ class ActionsUpdater:
                 target = release['target_commitish']
                 if target != action.default_branch and not is_sha1(target):
                     continue
+                tag_name = release['tag_name']
+                if get_major_version(tag_name) < get_major_version(current_pin.tag):
+                    continue
                 if release_is_too_hot(release, self._exclude_newer):
                     print(
-                        f'release "{release["tag_name"]}" for {action} is being skipped per cooldown policy',
+                        f'release "{tag_name}" for {action} is being skipped per cooldown policy',
                         file=sys.stderr,
                     )
                     continue
@@ -558,7 +570,7 @@ class ActionsUpdater:
                 if action in workflow.updated_actions:
                     continue
 
-                latest_pin = self.get_latest_action_pin(action)
+                latest_pin = self.get_latest_action_pin(current_pin)
                 if current_pin.sha == latest_pin.sha:
                     continue
 
@@ -569,7 +581,7 @@ class ActionsUpdater:
             lint_old_pin = self._parse_for_actionlint_pin(workflow)
             if not lint_old_pin:
                 continue
-            lint_new_pin = self.get_latest_action_pin(ACTIONLINT_ACTION)
+            lint_new_pin = self.get_latest_action_pin(lint_old_pin)
             if lint_old_pin == lint_new_pin:
                 continue
             workflow.needed_updates.add(ACTIONLINT_ACTION)
