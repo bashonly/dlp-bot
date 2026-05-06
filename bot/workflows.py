@@ -213,14 +213,18 @@ def generate_actions_report(all_updates: ActionsUpdateResult) -> collections.abc
 
         # temporary actionlint hack
         if action == ACTIONLINT_ACTION:
+            old_link = f'[v{md_old}](<{github_url}/releases/tag/v{old.tag}>)'
+            new_link = f'[v{md_new}](<{github_url}/releases/tag/v{new.tag}>)'
             compare = f'[`v{old.tag[:7]}...v{new.tag[:7]}`](<{github_url}/compare/v{old.tag}...v{new.tag}>)'
         else:
+            old_link = f'[{md_old}](<{github_url}/releases/tag/{old.tag}>)'
+            new_link = f'[{md_new}](<{github_url}/releases/tag/{new.tag}>)'
             compare = f'[`{old.sha[:7]}...{new.sha[:7]}`](<{github_url}/compare/{old.sha}...{new.sha}>)'
 
         yield ' | '.join((
             f'[**`{action}`**](<{github_url}>)',
-            f'[{md_old}](<{github_url}/releases/tag/{old.tag}>)',
-            f'[{md_new}](<{github_url}/releases/tag/{new.tag}>)',
+            old_link,
+            new_link,
             compare,
         ))
 
