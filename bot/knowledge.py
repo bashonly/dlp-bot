@@ -105,6 +105,7 @@ NPM_PACKAGES: dict[str, dict[str, str]] = {
     # no tags on GH
     'bun-types': {},
     '@types/bun': {},
+    '@types/deno': {},
     '@types/esrecurse': {},
     '@types/node': {},
     '@types/react': {},
@@ -112,6 +113,9 @@ NPM_PACKAGES: dict[str, dict[str, str]] = {
     'eslint-scope': {'owner': 'eslint', 'repo': 'js', 'tag_prefix': 'eslint-scope-v'},
     'eslint-visitor-keys': {'owner': 'eslint', 'repo': 'js', 'tag_prefix': 'eslint-visitor-keys-v'},
     'espree': {'owner': 'eslint', 'repo': 'js', 'tag_prefix': 'espree-v'},
+    # oxlint and oxfmt are released together under a single GH tag that uses only oxlint's version
+    'oxfmt': {},
+    'oxlint': {'owner': 'oxc-project', 'repo': 'oxc', 'tag_prefix': 'apps_v'},
 }
 
 ACTIONS: dict[str, dict[str, typing.Any]] = {
