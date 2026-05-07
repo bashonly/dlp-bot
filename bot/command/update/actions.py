@@ -128,28 +128,29 @@ def _real_run(args: argparse.Namespace):
 
     if args.clone:
         git.bot_clone_upstream_here(GIT_FORGE, pr.base.owner, pr.base.repo)
-    elif not args.verify_current_worktree and not git.bot_working_tree_is_clean():
-        raise GitError('manual intervention needed; git current worktree is unclean')
 
-    if not args.verify_head_branch and not args.verify_current_worktree:
-        # We need to add the "upstream" / base remote or else verify it exists w/correct URL
-        # (unless we are only verifying a head branch's work or the current local worktree)
-        git.bot_add_or_verify_remote(args.base_remote, GIT_FORGE, pr.base.owner, pr.base.repo)
+    # To avoid data loss, worktree must be clean unless we are only verifying the current worktree
+    if not (args.use_current_worktree and args.verify) and not git.bot_working_tree_is_clean():
+        raise GitError('manual intervention needed; git current worktree has uncommitted changes')
 
-    if args.pr or args.verify_head_branch:
-        # We need to add the "origin" / head remote or else verify it already exists w/correct URL:
-        # - If creating a pull request (--pr), we'll push to this remote later
-        # - If verifying a pull request's update (--verify--head-branch), we'll pull from this remote
-        git.bot_add_or_verify_remote(args.head_remote, GIT_FORGE, pr.head.owner, pr.head.repo)
+    if not args.use_current_worktree:
+        if args.pr or args.verify:
+            # We need to add the "origin" / head remote or else verify it already exists w/correct URL:
+            # - If creating a pull request (--pr), we'll push to this remote later
+            # - If verifying a pull request's update (--verify--head-branch), we'll pull from this remote
+            git.bot_add_or_verify_remote(args.head_remote, GIT_FORGE, pr.head.owner, pr.head.repo)
 
-    if args.verify_head_branch:
-        # Pull from "origin" / head branch so we can verify what was already committed/pushed
-        git.bot_fetch_origin()
-        git.bot_overwrite_branch(pr.head.branch, f'{args.head_remote}/{pr.head.branch}')
-    elif not args.verify_current_worktree:
-        # Pull from "upstream" / base branch so that our changes will cleanly merge
-        git.bot_fetch_upstream()
-        git.bot_overwrite_branch(pr.head.branch, f'{args.base_remote}/{pr.base.branch}')
+        if args.verify:
+            # Pull from "origin" / head branch so we can verify what was already committed/pushed
+            git.bot_fetch_origin()
+            git.bot_overwrite_branch(pr.head.branch, f'{args.head_remote}/{pr.head.branch}')
+        else:
+            # We need to add the "upstream" / base remote or else verify it exists w/correct URL
+            # (unless we are only verifying a head branch's work or using the current local worktree)
+            git.bot_add_or_verify_remote(args.base_remote, GIT_FORGE, pr.base.owner, pr.base.repo)
+            # Pull from "upstream" / base branch so that our changes will cleanly merge
+            git.bot_fetch_upstream()
+            git.bot_overwrite_branch(pr.head.branch, f'{args.base_remote}/{pr.base.branch}')
 
     updater = ActionsUpdater.from_git_and_pr(
         git=git,
@@ -165,12 +166,12 @@ def _real_run(args: argparse.Namespace):
         export_patches=args.export_patches,
         commit_prefix=formatted_prefix,
         commit_addendum=formatted_addendum,
-        verify=args.verify_head_branch or args.verify_current_worktree,
+        verify=args.verify,
     )
 
     if not all_updates:
         raise SuccessMessage('All actions & workflows are up-to-date')
-    elif args.verify_head_branch or args.verify_current_worktree:
+    elif args.verify:
         print_table(all_updates)
         raise VerificationError('Update verification failed')
 

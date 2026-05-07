@@ -76,44 +76,43 @@ def configure_update_options(
     group = parser.add_argument_group('update options')
 
     group.add_argument(
-        '--clone',
-        dest='clone',
-        default=False,
-        action=boolean_if_true_negates_others('verify_current_worktree'),
-        help=(
-            'whether to create a fresh clone of the repository instead of using an existing local repo '
-            '(default: --no-clone) (--clone implies: --no-verify-current-worktree)'
-        ),
-    )
-    group.add_argument(
         '--pr',
         dest='pr',
         default=False,
-        action=boolean_if_true_negates_others('verify_head_branch', 'verify_current_worktree'),
+        action=boolean_if_true_negates_others('use_current_worktree', 'verify'),
         help=(
             'whether to create a pull request targeting the base branch & submit it to the base owner '
-            '(default: --no-pr) (--pr implies: --no-verify-head-branch --no-verify-current-worktree)'
+            '(default: --no-pr) (--pr implies: --no-use-current-worktree --no-verify)'
         ),
     )
     group.add_argument(
-        '--verify-head-branch',
-        dest='verify_head_branch',
+        '--clone',
+        dest='clone',
         default=False,
-        action=boolean_if_true_negates_others('pr', 'verify_current_worktree'),
+        action=boolean_if_true_negates_others('use_current_worktree'),
         help=(
-            'whether to only verify the previous update that was committed/pushed to the head branch'
-            '(default: --no-verify-head-branch) (--verify-head-branch implies: --no-pr --no-verify-current-worktree)'
+            'whether to create a fresh clone of the repository instead of using an existing local repo '
+            '(default: --no-clone) (--clone implies: --no-use-current-worktree)'
         ),
     )
     group.add_argument(
-        '--verify-current-worktree',
-        dest='verify_current_worktree',
+        '--use-current-worktree',
+        dest='use_current_worktree',
         default=False,
-        action=boolean_if_true_negates_others('clone', 'pr', 'verify_head_branch'),
+        action=boolean_if_true_negates_others('clone', 'pr'),
         help=(
-            'whether to only verify the previous update made to the local current worktree '
-            '(default: --no-verify-current-worktree) '
-            '(--verify-current-worktree implies: --no-clone --no-pr --no-verify-head-branch)'
+            'whether to update/verify the local current worktree instead of pulling the remote base/head branch '
+            '(default: --no-update-current-worktree) (--use-current-worktree implies: --no-clone --no-pr)'
+        ),
+    )
+    group.add_argument(
+        '--verify',
+        dest='verify',
+        default=False,
+        action=boolean_if_true_negates_others('pr'),
+        help=(
+            'whether to only verify the previous update(s) instead of committing update(s) '
+            '(default: --no-verify) (--verify implies: --no-pr)'
         ),
     )
 
