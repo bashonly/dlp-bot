@@ -817,12 +817,12 @@ class GitHubPullRequest:
     ) -> GitHubPullRequest:
         if isinstance(base, str):
             base = make_absolute_branch(base, repo)
-        else:
+        elif isinstance(base, RelativeBranch):
             base = make_absolute_branch(base.label, repo)
 
         if isinstance(head, str):
             head = make_absolute_branch(head, repo)
-        else:
+        elif isinstance(head, RelativeBranch):
             head = make_absolute_branch(head.label, repo)
 
         return cls(base=base, head=head, **kwargs)
