@@ -144,6 +144,10 @@ def _real_run(args: argparse.Namespace):
             args.base_label or ':'.join((repo_info['owner'], repo_info['default_branch'])),
             args.repository,
         ),
+        make_absolute_branch(
+            args.head_label or DEFAULT_HEAD.label,
+            args.repository,
+        ),
     )
 
     starting_point = git.bot_rev_parse('HEAD')

@@ -13,7 +13,6 @@ from bot.git import (
 from bot.github import (
     AbsoluteBranch,
     GitHubPullRequest,
-    parse_branch_compare_label,
 )
 from bot.knowledge import GIT_FORGE
 from bot.utils import parse_datetime_from_cooldown
@@ -43,7 +42,6 @@ def configure_remote_target_options(
     head_kwargs: dict[str, typing.Any] = {}
     if default_head_label:
         head_kwargs.update({
-            'default': default_head_label,
             'help': f'{head_help}. (default: {default_head_label})',
         })
     else:
@@ -273,6 +271,7 @@ def configure_logging_options(parser: argparse.ArgumentParser) -> argparse._Argu
 def get_update_objects(
     args: argparse.Namespace,
     base: AbsoluteBranch,
+    head: AbsoluteBranch,
     *,
     base_forge: str = GIT_FORGE,
     head_forge: str = GIT_FORGE,
@@ -288,6 +287,8 @@ def get_update_objects(
       - a `directory` attribute (str or None)
 
     `base` specifies the OWNER:REPO:BRANCH that any updates would be merged into
+
+    `head` specifies the OWNER:REPO:BRANCH that any updates should be pushed to
 
     `base_forge` specifies the git forge of the base branch; defaults to bot.knowledge.GIT_FORGE
 
@@ -329,8 +330,8 @@ def get_update_objects(
 
     pr = GitHubPullRequest.from_branches(
         repo=base.repo,
-        base=base.label,
-        head=args.head_label,
+        base=base,
+        head=head,
         github_token=args.github_token,
         verbose=args.verbose,
     )
@@ -345,7 +346,7 @@ def get_update_objects(
     if args.head_remote:
         head_remote = args.head_remote
     elif args.head_label:
-        head_remote = parse_branch_compare_label(args.head_label)[0]
+        head_remote = head.owner
     else:  # XXX: Keep this in sync with the configure_git_options() default
         head_remote = 'origin'
 
