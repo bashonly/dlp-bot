@@ -3,8 +3,19 @@ from __future__ import annotations
 import argparse
 import os
 import pathlib
+import tempfile
 import typing
 
+from bot.git import (
+    Git,
+    GitError,
+)
+from bot.github import (
+    AbsoluteBranch,
+    GitHubPullRequest,
+    parse_branch_compare_label,
+)
+from bot.knowledge import GIT_FORGE
 from bot.utils import parse_datetime_from_cooldown
 
 
@@ -134,30 +145,30 @@ def configure_update_options(
     return group
 
 
-def configure_git_options(
-    parser: argparse.ArgumentParser,
-    *,
-    default_head_remote: str = 'origin',
-    default_base_remote: str = 'upstream',
-) -> argparse._ArgumentGroup:
+# XXX: should always be used together with bot.common.configure_remote_target_options()
+def configure_git_options(parser: argparse.ArgumentParser) -> argparse._ArgumentGroup:
+    REMOTE_HELP_TMPL = (
+        "name of the {basehead} repository's git remote in the local repository. "
+        'the default is "{default}" if the --{basehead} option is not used, '
+        'otherwise the default is the OWNER value from the --{basehead} argument'
+    )
     group = parser.add_argument_group('git options')
-
     group.add_argument(
         '--git-protocol',
         choices=['ssh', 'https'],
-        help=('protocol to use with git. one of "ssh" (default) or "https"'),
+        help='protocol to use with git. (default: ssh)',
     )
     group.add_argument(
         '--head-remote',
         metavar='REMOTE',
-        default=default_head_remote,
-        help=f"name of the head repository's git remote in the local repository. (default: {default_head_remote})",
+        # XXX: Keep default value in sync with get_update_objects()
+        help=REMOTE_HELP_TMPL.format(basehead='head', default='origin'),
     )
     group.add_argument(
         '--base-remote',
         metavar='REMOTE',
-        default=default_base_remote,
-        help=f"name of the base repository's git remote in the local repository. (default: {default_base_remote})",
+        # XXX: Keep default value in sync with get_update_objects()
+        help=REMOTE_HELP_TMPL.format(basehead='base', default='upstream'),
     )
 
     return group
@@ -257,3 +268,119 @@ def configure_logging_options(parser: argparse.ArgumentParser) -> argparse._Argu
     )
 
     return group
+
+
+def get_update_objects(
+    args: argparse.Namespace,
+    base: AbsoluteBranch,
+    *,
+    base_forge: str = GIT_FORGE,
+    head_forge: str = GIT_FORGE,
+) -> tuple[pathlib.Path, GitHubPullRequest, Git]:
+    """command.update boilerplate setup function
+
+    `args` is expected to be the result of an argparse.ArgumentParser configured with (at least):
+      - bot.common.configure_remote_target_options()
+      - bot.common.configure_update_options()
+      - bot.common.configure_git_options()
+      - bot.common.configure_github_options()
+      - bot.common.configure_logging_options()
+      - a `directory` attribute (str or None)
+
+    `base` specifies the OWNER:REPO:BRANCH that any updates would be merged into
+
+    `base_forge` specifies the git forge of the base branch; defaults to bot.knowledge.GIT_FORGE
+
+    `head_forge` specifies the git forge of the head branch; defaults to bot.knowledge.GIT_FORGE
+
+    returns a 3-member tuple that consists of:
+      1. a pathlib.Path object that points to the local repository's base directory
+      2. a bot.github.GitHubPullRequest object initialized for the potential update
+      3. a bot.git.Git object initialized with the appropriate local and remote repo info
+    """
+    for attr in (
+        'directory',
+        # configure_remote_target_options
+        'base_label',
+        'head_label',
+        # configure_update_options
+        'clone',
+        'pr',
+        'use_current_worktree',
+        'verify',
+        # configure_git_options
+        'git_protocol',
+        'base_remote',
+        'head_remote',
+        # configure_github_options
+        'github_token',
+        # configure_logging_options
+        'verbose',
+    ):
+        assert hasattr(args, attr), f'args namespace is missing a required attribute: {attr}'
+
+    if not args.directory:
+        if args.clone:
+            repo_path = pathlib.Path(tempfile.mkdtemp())
+        else:
+            repo_path = pathlib.Path('.')
+    else:
+        repo_path = pathlib.Path(args.directory)
+
+    pr = GitHubPullRequest.from_branches(
+        repo=base.repo,
+        base=base.label,
+        head=args.head_label,
+        github_token=args.github_token,
+        verbose=args.verbose,
+    )
+
+    if args.base_remote:
+        base_remote = args.base_remote
+    elif args.base_label:
+        base_remote = base.owner
+    else:  # XXX: Keep this in sync with the configure_git_options() default
+        base_remote = 'upstream'
+
+    if args.head_remote:
+        head_remote = args.head_remote
+    elif args.head_label:
+        head_remote = parse_branch_compare_label(args.head_label)[0]
+    else:  # XXX: Keep this in sync with the configure_git_options() default
+        head_remote = 'origin'
+
+    git = Git(
+        repo_path,
+        protocol=args.git_protocol,
+        origin_name=head_remote,
+        upstream_name=base_remote,
+        verbose=args.verbose,
+    )
+
+    if args.clone:
+        git.bot_clone_upstream_here(base_forge, pr.base.owner, pr.base.repo)
+
+    # To avoid data loss, worktree must be clean unless we are only verifying the current worktree
+    if not (args.use_current_worktree and args.verify) and not git.bot_working_tree_is_clean():
+        raise GitError('manual intervention needed; git current worktree has uncommitted changes')
+
+    if not args.use_current_worktree:
+        if args.pr or args.verify:
+            # We need to add the "origin" / head remote or else verify it already exists w/correct URL:
+            # - If creating a pull request (--pr), we'll push to this remote later
+            # - If verifying a pull request's update (--verify--head-branch), we'll pull from this remote
+            git.bot_add_or_verify_remote(head_remote, head_forge, pr.head.owner, pr.head.repo)
+
+        if args.verify:
+            # Pull from "origin" / head branch so we can verify what was already committed/pushed
+            git.bot_fetch_origin()
+            git.bot_overwrite_branch(pr.head.branch, f'{head_remote}/{pr.head.branch}')
+        else:
+            # We need to add the "upstream" / base remote or else verify it exists w/correct URL
+            # (unless we are only verifying a head branch's work or using the current local worktree)
+            git.bot_add_or_verify_remote(base_remote, base_forge, pr.base.owner, pr.base.repo)
+            # Pull from "upstream" / base branch so that our changes will cleanly merge
+            git.bot_fetch_upstream()
+            git.bot_overwrite_branch(pr.head.branch, f'{base_remote}/{pr.base.branch}')
+
+    return repo_path, pr, git

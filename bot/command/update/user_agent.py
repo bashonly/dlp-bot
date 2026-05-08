@@ -9,7 +9,6 @@ import collections.abc
 import os
 import pathlib
 import sys
-import tempfile
 
 from bot.command.common import (
     configure_export_options,
@@ -18,13 +17,16 @@ from bot.command.common import (
     configure_logging_options,
     configure_remote_target_options,
     configure_update_options,
+    get_update_objects,
 )
-from bot.git import Git, GitError
-from bot.github import GitHubPullRequest, RelativeBranch
+from bot.git import GitError
+from bot.github import (
+    RelativeBranch,
+    make_absolute_branch,
+)
 from bot.knowledge import (
     DEFAULT_HEAD_BRANCHES,
     DEFAULT_HEAD_OWNER,
-    GIT_FORGE,
     PULL_REQUEST_TEMPLATES,
     SERVICED_REPOS,
 )
@@ -152,56 +154,14 @@ def update_user_agent_range(
 
 
 def _real_run(args: argparse.Namespace):
-    if not args.directory:
-        if args.clone:
-            repo_path = pathlib.Path(tempfile.mkdtemp())
-        else:
-            repo_path = pathlib.Path('.')
-    else:
-        repo_path = pathlib.Path(args.directory)
-
     repo_info = SERVICED_REPOS[REPO]
-    pr = GitHubPullRequest.from_branches(
-        repo=REPO,
-        base=args.base_label or ':'.join((repo_info['owner'], repo_info['default_branch'])),
-        head=args.head_label,
-        github_token=args.github_token,
-        verbose=args.verbose,
+    _, pr, git = get_update_objects(
+        args,
+        make_absolute_branch(
+            args.base_label or ':'.join((repo_info['owner'], repo_info['default_branch'])),
+            REPO,
+        ),
     )
-
-    git = Git(
-        repo_path,
-        protocol=args.git_protocol,
-        origin_name=args.head_remote,
-        upstream_name=args.base_remote,
-        verbose=args.verbose,
-    )
-
-    if args.clone:
-        git.bot_clone_upstream_here(GIT_FORGE, pr.base.owner, pr.base.repo)
-
-    # To avoid data loss, worktree must be clean unless we are only verifying the current worktree
-    if not (args.use_current_worktree and args.verify) and not git.bot_working_tree_is_clean():
-        raise GitError('manual intervention needed; git current worktree has uncommitted changes')
-
-    if not args.use_current_worktree:
-        if args.pr or args.verify:
-            # We need to add the "origin" / head remote or else verify it already exists w/correct URL:
-            # - If creating a pull request (--pr), we'll push to this remote later
-            # - If verifying a pull request's update (--verify--head-branch), we'll pull from this remote
-            git.bot_add_or_verify_remote(args.head_remote, GIT_FORGE, pr.head.owner, pr.head.repo)
-
-        if args.verify:
-            # Pull from "origin" / head branch so we can verify what was already committed/pushed
-            git.bot_fetch_origin()
-            git.bot_overwrite_branch(pr.head.branch, f'{args.head_remote}/{pr.head.branch}')
-        else:
-            # We need to add the "upstream" / base remote or else verify it exists w/correct URL
-            # (unless we are only verifying a head branch's work or using the current local worktree)
-            git.bot_add_or_verify_remote(args.base_remote, GIT_FORGE, pr.base.owner, pr.base.repo)
-            # Pull from "upstream" / base branch so that our changes will cleanly merge
-            git.bot_fetch_upstream()
-            git.bot_overwrite_branch(pr.head.branch, f'{args.base_remote}/{pr.base.branch}')
 
     starting_point = git.bot_rev_parse('HEAD')
 
