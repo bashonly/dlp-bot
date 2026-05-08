@@ -83,7 +83,7 @@ def parse_branch_compare_label(label: str) -> tuple[str, str | None, str]:
 
 def make_absolute_branch(label: str, repo: str | None = None) -> AbsoluteBranch:
     owner, parsed_repo, branch = parse_branch_compare_label(label)
-    repo = repo or parsed_repo
+    repo = parsed_repo or repo
     if not repo or not isinstance(repo, str):
         raise ValueError('make_absolute_branch requires a repo value')
 
