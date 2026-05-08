@@ -90,10 +90,6 @@ def make_absolute_branch(label: str, repo: str | None = None) -> AbsoluteBranch:
     return AbsoluteBranch(owner=owner, repo=repo, branch=branch)
 
 
-def upgrade_branch(branch: RelativeBranch | AbsoluteBranch, repo: str) -> AbsoluteBranch:
-    return AbsoluteBranch(owner=branch.owner, repo=repo, branch=branch.branch)
-
-
 class GitHubAPICaller(BaseAPICaller):
     _API_BASE_URL = 'https://api.github.com/'
     _NOTE_PREFIX = 'api'
@@ -822,12 +818,12 @@ class GitHubPullRequest:
         if isinstance(base, str):
             base = make_absolute_branch(base, repo)
         else:
-            base = upgrade_branch(base, repo)
+            base = make_absolute_branch(base.label, repo)
 
         if isinstance(head, str):
             head = make_absolute_branch(head, repo)
         else:
-            head = upgrade_branch(head, repo)
+            head = make_absolute_branch(head.label, repo)
 
         return cls(base=base, head=head, **kwargs)
 
