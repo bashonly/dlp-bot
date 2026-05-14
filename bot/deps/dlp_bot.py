@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 
-from bot.deps.common import DependenciesUpdateResult
+from bot.deps.common import DependenciesUpdateResultType
 from bot.deps.python import (
     PythonDependenciesUpdater,
     get_extras,
@@ -23,7 +23,7 @@ class DLPBotDependenciesUpdater(PythonDependenciesUpdater):
         /,
         *,
         updated_paths: set[pathlib.Path],
-        all_updates: DependenciesUpdateResult,
+        all_updates: DependenciesUpdateResultType,
         env: dict[str, str] | None,
         upgrade_arg: str,
         upgrade_only: str | None,

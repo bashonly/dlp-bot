@@ -20,7 +20,7 @@ from bot.command.common import (
     configure_update_options,
     get_update_objects,
 )
-from bot.deps.common import DependenciesUpdateResult
+from bot.deps.common import DependenciesUpdateResultType
 from bot.deps.dlp_bot import DLPBotDependenciesUpdater
 from bot.deps.ejs import (
     EJSDependenciesUpdater,
@@ -135,7 +135,7 @@ def configure_parser(
     configure_logging_options(parser)
 
 
-def print_table(all_updates: DependenciesUpdateResult):
+def print_table(all_updates: DependenciesUpdateResultType):
     for row in table_a_raza(
         ('package', 'old', 'new'), [(package, old or '', new or '') for package, (old, new) in all_updates.items()]
     ):

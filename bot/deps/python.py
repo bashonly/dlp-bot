@@ -16,7 +16,7 @@ import urllib.parse
 
 from bot.deps.common import (
     DependenciesUpdater,
-    DependenciesUpdateResult,
+    DependenciesUpdateResultType,
     Project,
     denormalized_tags,
     make_commit_message,
@@ -420,7 +420,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         upgrade_only: str | None = None,
         verify: bool = False,
         **kwargs,
-    ) -> tuple[set[pathlib.Path], DependenciesUpdateResult]:
+    ) -> tuple[set[pathlib.Path], DependenciesUpdateResultType]:
         # Stash original lockfile for package diff-ing post-update
         og_lockfile_toml = self.load_lockfile_toml()
 
@@ -478,7 +478,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         /,
         *,
         updated_paths: set[pathlib.Path],
-        all_updates: DependenciesUpdateResult,
+        all_updates: DependenciesUpdateResultType,
         env: dict[str, str] | None,
         upgrade_arg: str,
         upgrade_only: str | None,
@@ -486,7 +486,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
     ):
         """To be optionally implemented by subclasses.
 
-        Runs after `uv lock` is executed and after the DependenciesUpdateResult has been populated.
+        Runs after `uv lock` is executed and after the DependenciesUpdateResultType dict has been populated.
 
         Receives the `pre_upgrade_data` returned from _pre_upgrade() as a positional-only argument.
 
@@ -494,14 +494,14 @@ class PythonDependenciesUpdater(DependenciesUpdater):
 
         Can add `pathlib.Path`s to the `updated_paths` set as necessary.
 
-        Can mutate the `all_updates` DependenciesUpdateResult dict as necessary.
+        Can mutate the `all_updates` DependenciesUpdateResultType dict as necessary.
         """
         pass
 
     def _generate_report(
         self,
         /,
-        all_updates: DependenciesUpdateResult,
+        all_updates: DependenciesUpdateResultType,
     ) -> collections.abc.Iterator[str]:
         pypi = PyPIAPICaller(verbose=self.gh.verbose)
 
@@ -584,7 +584,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
     def _make_pull_request_description(
         self,
         /,
-        all_updates: DependenciesUpdateResult,
+        all_updates: DependenciesUpdateResultType,
     ) -> str:
         return '\n'.join((
             f'{BOT_BEGIN_HTML_TAG}\n',
@@ -595,7 +595,7 @@ class PythonDependenciesUpdater(DependenciesUpdater):
     def parse_results(
         self,
         /,
-        all_updates: DependenciesUpdateResult,
+        all_updates: DependenciesUpdateResultType,
         existing_commits: list[Commit],
         *,
         commit_prefix: str | None = None,

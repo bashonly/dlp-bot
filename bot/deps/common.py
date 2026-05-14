@@ -13,16 +13,16 @@ except ImportError:
     yaml = None
 
 type DependencyDiffType = tuple[str, str] | tuple[str, None] | tuple[None, str] | tuple[str | None, str | None]
-type DependenciesUpdateResult = dict[str, DependencyDiffType]
+type DependenciesUpdateResultType = dict[str, DependencyDiffType]
 
 
-def package_diff_dict(old_dict: dict[str, str], new_dict: dict[str, str]) -> DependenciesUpdateResult:
+def package_diff_dict(old_dict: dict[str, str], new_dict: dict[str, str]) -> DependenciesUpdateResultType:
     """
     @param old_dict: Dictionary w/ package names as keys and old package versions as values
     @param new_dict: Dictionary w/ package names as keys and new package versions as values
     @returns         Dictionary w/ package names as keys and tuples of (old_ver, new_ver) as values
     """
-    ret_dict: DependenciesUpdateResult = {}
+    ret_dict: DependenciesUpdateResultType = {}
 
     for name, new_version in new_dict.items():
         if name not in old_dict:
@@ -52,7 +52,7 @@ def denormalized_tags(tag: str, *prefixes: str) -> list[str]:
 
 
 def make_commit_message(
-    all_updates: DependenciesUpdateResult,
+    all_updates: DependenciesUpdateResultType,
     *,
     prefix: str | None = None,
     addendum: str | None = None,
@@ -79,12 +79,12 @@ def make_commit_message(
         ))
 
 
-def make_commit_title(all_updates: DependenciesUpdateResult, *, prefix: str | None = None) -> str:
+def make_commit_title(all_updates: DependenciesUpdateResultType, *, prefix: str | None = None) -> str:
     count = len(all_updates)
     return f'{prefix or ""}Update {count} dependenc{"ies" if count > 1 else "y"}'
 
 
-def make_commit_body(all_updates: DependenciesUpdateResult) -> str:
+def make_commit_body(all_updates: DependenciesUpdateResultType) -> str:
     return '\n'.join(sorted(make_commit_line(package, old, new) for package, (old, new) in all_updates.items()))
 
 
@@ -137,7 +137,7 @@ class DependenciesUpdater:
         self,
         /,
         **kwargs,
-    ) -> tuple[set[pathlib.Path], DependenciesUpdateResult]:
+    ) -> tuple[set[pathlib.Path], DependenciesUpdateResultType]:
         """Update the project's dependencies.
 
         Should return a tuple of a set with all updated paths and a dict with results data.
@@ -147,7 +147,7 @@ class DependenciesUpdater:
     def parse_results(
         self,
         /,
-        all_updates: DependenciesUpdateResult,
+        all_updates: DependenciesUpdateResultType,
         existing_commits: list[Commit],
         **kwargs,
     ) -> tuple[str, str, str]:
@@ -163,27 +163,27 @@ class DependenciesUpdater:
         """
         raise NotImplementedError('this method must be implemented by subclasses')
 
-    def serialize_results(self, /, updates: DependenciesUpdateResult) -> str:
+    def serialize_results(self, /, updates: DependenciesUpdateResultType) -> str:
         if yaml is None:
             raise BotError('the pyyaml package (yaml library) is required')
 
         return yaml.safe_dump({self._UPDATES_KEY: updates}, sort_keys=False)
 
-    def deserialize_results(self, /, text: str) -> DependenciesUpdateResult:
+    def deserialize_results(self, /, text: str) -> DependenciesUpdateResultType:
         if yaml is None:
             raise BotError('the pyyaml package (yaml library) is required')
 
         parsed_yaml = yaml.safe_load(text) or {}
         serialized_updates = parsed_yaml.get(self._UPDATES_KEY, {})
-        updates: DependenciesUpdateResult = {}
+        updates: DependenciesUpdateResultType = {}
 
         for package, (old, new) in serialized_updates.items():
             updates[package] = (old, new)
 
         return updates
 
-    def get_previous_updates(self, /, commits: list[Commit]) -> DependenciesUpdateResult:
-        previous_updates: DependenciesUpdateResult = {}
+    def get_previous_updates(self, /, commits: list[Commit]) -> DependenciesUpdateResultType:
+        previous_updates: DependenciesUpdateResultType = {}
         oldest: dict[str, str | None] = {}
         newest: dict[str, str | None] = {}
 
@@ -202,10 +202,10 @@ class DependenciesUpdater:
     def reconcile_updates(
         self,
         /,
-        previous_updates: DependenciesUpdateResult,
-        new_updates: DependenciesUpdateResult,
-    ) -> DependenciesUpdateResult:
-        result: DependenciesUpdateResult = {}
+        previous_updates: DependenciesUpdateResultType,
+        new_updates: DependenciesUpdateResultType,
+    ) -> DependenciesUpdateResultType:
+        result: DependenciesUpdateResultType = {}
 
         for package, (old, new) in previous_updates.items():
             if package not in new_updates:

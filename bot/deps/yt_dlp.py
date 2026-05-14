@@ -9,7 +9,7 @@ import sys
 import zipfile
 
 from bot.deps.common import (
-    DependenciesUpdateResult,
+    DependenciesUpdateResultType,
     package_diff_dict,
 )
 from bot.deps.python import (
@@ -98,7 +98,7 @@ PYINSTALLER_BUILDS_TARGETS = {
 }
 
 
-def evaluate_requirements_txt(old_txt: str, new_txt: str) -> DependenciesUpdateResult:
+def evaluate_requirements_txt(old_txt: str, new_txt: str) -> DependenciesUpdateResultType:
     old_dict: dict[str, str] = {}
     new_dict: dict[str, str] = {}
 
@@ -217,7 +217,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         /,
         *,
         updated_paths: set[pathlib.Path],
-        all_updates: DependenciesUpdateResult,
+        all_updates: DependenciesUpdateResultType,
         env: dict[str, str] | None,
         upgrade_arg: str,
         upgrade_only: str | None,

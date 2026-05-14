@@ -12,7 +12,7 @@ import typing
 
 from bot.deps.common import (
     DependenciesUpdater,
-    DependenciesUpdateResult,
+    DependenciesUpdateResultType,
     Project,
     denormalized_tags,
     make_commit_body,
@@ -46,9 +46,9 @@ def get_package_lock_packages(package_lock: dict[str, typing.Any]) -> dict[str, 
 
 
 def make_ejs_commit_message(
-    all_updates: DependenciesUpdateResult,
-    updates: DependenciesUpdateResult,
-    dev_updates: DependenciesUpdateResult,
+    all_updates: DependenciesUpdateResultType,
+    updates: DependenciesUpdateResultType,
+    dev_updates: DependenciesUpdateResultType,
     *,
     prefix: str | None = None,
     addendum: str | None = None,
@@ -84,8 +84,8 @@ def make_ejs_commit_message(
 
 
 def make_ejs_commit_title(
-    updates: DependenciesUpdateResult,
-    dev_updates: DependenciesUpdateResult,
+    updates: DependenciesUpdateResultType,
+    dev_updates: DependenciesUpdateResultType,
     *,
     prefix: str | None = None,
 ) -> str:
@@ -252,7 +252,7 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         *,
         upgrade_only: str | None = None,
         **kwargs,
-    ) -> tuple[set[pathlib.Path], DependenciesUpdateResult]:
+    ) -> tuple[set[pathlib.Path], DependenciesUpdateResultType]:
         # Stash original lockfile for package diff-ing post-update
         og_lockfile = self.load_package_lock()
 
@@ -309,7 +309,7 @@ class EJSDependenciesUpdater(DependenciesUpdater):
     def _generate_report(
         self,
         /,
-        updates: DependenciesUpdateResult,
+        updates: DependenciesUpdateResultType,
         npm_api: NPMAPICaller,
         *,
         header: str | None = None,
@@ -419,8 +419,8 @@ class EJSDependenciesUpdater(DependenciesUpdater):
     def _make_pull_request_description(
         self,
         /,
-        dependencies: DependenciesUpdateResult,
-        dev_dependencies: DependenciesUpdateResult,
+        dependencies: DependenciesUpdateResultType,
+        dev_dependencies: DependenciesUpdateResultType,
     ) -> str:
         npm_api = NPMAPICaller(verbose=self.gh.verbose)
 
@@ -434,7 +434,7 @@ class EJSDependenciesUpdater(DependenciesUpdater):
     def parse_results(
         self,
         /,
-        all_updates: DependenciesUpdateResult,
+        all_updates: DependenciesUpdateResultType,
         existing_commits: list[Commit],
         *,
         commit_prefix: str | None = None,
@@ -449,10 +449,10 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         )
 
         dependencies = self.load_package_json()['dependencies']
-        updates: DependenciesUpdateResult = {}
-        dev_updates: DependenciesUpdateResult = {}
-        reconciled_updates: DependenciesUpdateResult = {}
-        reconciled_dev_updates: DependenciesUpdateResult = {}
+        updates: DependenciesUpdateResultType = {}
+        dev_updates: DependenciesUpdateResultType = {}
+        reconciled_updates: DependenciesUpdateResultType = {}
+        reconciled_dev_updates: DependenciesUpdateResultType = {}
 
         for package_name, diff_tuple in all_updates.items():
             if package_name in dependencies:
