@@ -169,7 +169,7 @@ def _make_ua_pull_request_body_and_commit_message(
 
     serialized_data_lines = [
         '---',
-        yaml.safe_dump({'user-agent': {'old': old_range, 'new': new_range}}, sort_keys=False),
+        yaml.safe_dump({UPDATE_NAME: {'old': old_range, 'new': new_range}}, sort_keys=False),
     ]
 
     return f'{body}\n', '\n\n'.join((
@@ -189,7 +189,7 @@ def _get_original_user_agent_range(
         if not parsed_yaml:
             continue
 
-        update: dict[str, list[int]] = parsed_yaml.get('user-agent', {})
+        update: dict[str, list[int]] = parsed_yaml.get(UPDATE_NAME, {})
         if not update or not update.get('old'):
             continue
 
