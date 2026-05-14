@@ -40,7 +40,7 @@ from bot.utils import (
 )
 from bot.workflows import (
     ActionsUpdater,
-    ActionsUpdateResult,
+    ActionsUpdateResultType,
 )
 
 try:
@@ -87,7 +87,7 @@ def configure_parser(parser: argparse.ArgumentParser):
     configure_logging_options(parser)
 
 
-def print_table(all_updates: ActionsUpdateResult):
+def print_table(all_updates: ActionsUpdateResultType):
     for row in table_a_raza(
         ('action', 'old', 'new'),
         [(f'{action.owner}/{action.repo}', old.tag, new.tag) for action, (old, new) in all_updates.items()],

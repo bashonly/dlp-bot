@@ -75,7 +75,7 @@ class ActionPin:
     tag: str
 
 
-type ActionsUpdateResult = dict[Action, tuple[ActionPin, ActionPin]]
+type ActionsUpdateResultType = dict[Action, tuple[ActionPin, ActionPin]]
 
 ACTIONLINT_ACTION = Action(owner='rhysd', repo='actionlint', default_branch='main')
 ACTIONLINT_ASSET_TMPL = 'actionlint_{version}_linux_amd64.tar.gz'
@@ -116,7 +116,7 @@ def get_tag_from_comment(action: Action, sha: str, workflow_text: str) -> str:
 
 def make_pull_request_description(
     workflows: list[Workflow],
-    all_updates: ActionsUpdateResult,
+    all_updates: ActionsUpdateResultType,
     *,
     prefix: str | None = None,
     addendum: str | None = None,
@@ -135,7 +135,7 @@ def make_pull_request_description(
 
 def make_bulk_commit_message(
     workflows: list[Workflow],
-    all_updates: ActionsUpdateResult,
+    all_updates: ActionsUpdateResultType,
     *,
     prefix: str | None = None,
     addendum: str | None = None,
@@ -152,7 +152,7 @@ def make_bulk_commit_message(
 
 def make_bulk_commit_title(
     workflows: list[Workflow],
-    all_updates: ActionsUpdateResult,
+    all_updates: ActionsUpdateResultType,
     *,
     prefix: str | None = None,
 ) -> str:
@@ -167,7 +167,7 @@ def make_bulk_commit_title(
     ))
 
 
-def make_bulk_commit_body(all_updates: ActionsUpdateResult) -> str:
+def make_bulk_commit_body(all_updates: ActionsUpdateResultType) -> str:
     return '\n'.join(sorted(make_action_commit_line(action, old, new) for action, (old, new) in all_updates.items()))
 
 
@@ -201,7 +201,7 @@ def generate_workflows_report(workflows: list[Workflow]) -> collections.abc.Iter
         yield f'**`{workflow}`** | {updates}'
 
 
-def generate_actions_report(all_updates: ActionsUpdateResult) -> collections.abc.Iterator[str]:
+def generate_actions_report(all_updates: ActionsUpdateResultType) -> collections.abc.Iterator[str]:
     yield 'action | old | new | diff'
     yield '-------|-----|-----|-----'
     for action, (old, new) in sorted(all_updates.items()):
@@ -248,7 +248,7 @@ class Workflow:
         self.path = path.resolve()
         self._text = path.read_text(encoding='utf-8')
         self._unwritten = False
-        self.updated_actions: ActionsUpdateResult = {}
+        self.updated_actions: ActionsUpdateResultType = {}
         self.needed_updates: set[Action] = set()
 
     def __str__(self):
@@ -563,7 +563,7 @@ class ActionsUpdater:
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
         verify: bool = False,
-    ) -> tuple[list[Workflow], ActionsUpdateResult]:
+    ) -> tuple[list[Workflow], ActionsUpdateResultType]:
         if commit_type not in (None, 'bulk', 'incremental'):
             raise ValueError(f'invalid commit_type value: {commit_type}')
 
@@ -669,7 +669,7 @@ class ActionsUpdater:
         self,
         /,
         workflows: list[Workflow],
-        all_updates: ActionsUpdateResult,
+        all_updates: ActionsUpdateResultType,
         existing_commits: list[Commit],
         *,
         commit_prefix: str | None = None,
@@ -717,7 +717,7 @@ class ActionsUpdater:
         del pin_dict['action']
         return pin_dict
 
-    def serialize_results(self, /, workflows: list[Workflow], updates: ActionsUpdateResult) -> str:
+    def serialize_results(self, /, workflows: list[Workflow], updates: ActionsUpdateResultType) -> str:
         if yaml is None:
             raise BotError('the pyyaml package (yaml library) is required')
 
@@ -742,7 +742,7 @@ class ActionsUpdater:
             sort_keys=False,
         )
 
-    def deserialize_results(self, /, text: str) -> tuple[list[Workflow], ActionsUpdateResult]:
+    def deserialize_results(self, /, text: str) -> tuple[list[Workflow], ActionsUpdateResultType]:
         if yaml is None:
             raise BotError('the pyyaml package (yaml library) is required')
 
@@ -760,7 +760,7 @@ class ActionsUpdater:
                 )
             workflows.append(workflow)
 
-        updates: ActionsUpdateResult = {}
+        updates: ActionsUpdateResultType = {}
         serialized_updates: dict[str, list[dict[str, str]]] = parsed_yaml.get(self._UPDATES_KEY, {})
         for action_name, (old_attrs, new_attrs) in serialized_updates.items():
             action = Action(*parse_owner_and_repo(action_name), default_branch='_')
@@ -775,9 +775,9 @@ class ActionsUpdater:
         self,
         /,
         commits: list[Commit],
-    ) -> tuple[list[Workflow], ActionsUpdateResult]:
+    ) -> tuple[list[Workflow], ActionsUpdateResultType]:
         all_workflows: list[Workflow] = []
-        previous_updates: ActionsUpdateResult = {}
+        previous_updates: ActionsUpdateResultType = {}
         oldest: dict[Action, ActionPin] = {}
         newest: dict[Action, ActionPin] = {}
 
@@ -815,10 +815,10 @@ class ActionsUpdater:
     def reconcile_updates(
         self,
         /,
-        previous_updates: ActionsUpdateResult,
-        new_updates: ActionsUpdateResult,
-    ) -> ActionsUpdateResult:
-        result: ActionsUpdateResult = {}
+        previous_updates: ActionsUpdateResultType,
+        new_updates: ActionsUpdateResultType,
+    ) -> ActionsUpdateResultType:
+        result: ActionsUpdateResultType = {}
 
         for package, (old, new) in previous_updates.items():
             if package not in new_updates:
