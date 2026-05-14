@@ -7,6 +7,7 @@ import tempfile
 import typing
 
 from bot.git import (
+    Commit,
     Git,
     GitError,
 )
@@ -275,7 +276,7 @@ def get_update_objects(
     *,
     base_forge: str = GIT_FORGE,
     head_forge: str = GIT_FORGE,
-) -> tuple[pathlib.Path, GitHubPullRequest, Git]:
+) -> tuple[pathlib.Path, GitHubPullRequest, Git, list[Commit]]:
     """command.update boilerplate setup function
 
     `args` is expected to be the result of an argparse.ArgumentParser configured with (at least):
@@ -294,10 +295,11 @@ def get_update_objects(
 
     `head_forge` specifies the git forge of the head branch; defaults to bot.knowledge.GIT_FORGE
 
-    returns a 3-member tuple that consists of:
+    returns a 4-member tuple that consists of:
       1. a pathlib.Path object that points to the local repository's base directory
       2. a bot.github.GitHubPullRequest object initialized for the potential update
       3. a bot.git.Git object initialized with the appropriate local and remote repo info
+      4. a list of pre-existing `bot.git.Commit`s on the head branch if a PR is already open
     """
     for attr in (
         'directory',
@@ -365,11 +367,24 @@ def get_update_objects(
     if not (args.use_current_worktree and args.verify) and not git.bot_working_tree_is_clean():
         raise GitError('manual intervention needed; git current worktree has uncommitted changes')
 
+    # Are we updating an existing PR?
+    if args.pr and pr.is_open():
+        git.bot_add_or_verify_remote(head_remote, head_forge, pr.head.owner, pr.head.repo)
+        git.bot_fetch_origin()
+        git.bot_overwrite_branch(pr.head.branch, f'{head_remote}/{pr.head.branch}')
+
+        git.bot_add_or_verify_remote(base_remote, base_forge, pr.base.owner, pr.base.repo)
+        git.bot_fetch_upstream()
+        git.rebase(f'{base_remote}/{pr.base.branch}')
+
+        return repo_path, pr, git, git.bot_list_new_commits(f'{base_remote}/{pr.base.branch}')
+
+    # Not updating an existing PR
     if not args.use_current_worktree:
         if args.pr or args.verify:
             # We need to add the "origin" / head remote or else verify it already exists w/correct URL:
             # - If creating a pull request (--pr), we'll push to this remote later
-            # - If verifying a pull request's update (--verify--head-branch), we'll pull from this remote
+            # - If verifying a pull request's update (--verify-head-branch), we'll pull from this remote
             git.bot_add_or_verify_remote(head_remote, head_forge, pr.head.owner, pr.head.repo)
 
         if args.verify:
@@ -384,4 +399,4 @@ def get_update_objects(
             git.bot_fetch_upstream()
             git.bot_overwrite_branch(pr.head.branch, f'{base_remote}/{pr.base.branch}')
 
-    return repo_path, pr, git
+    return repo_path, pr, git, []

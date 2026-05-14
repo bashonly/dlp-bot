@@ -47,6 +47,12 @@ from bot.utils import (
     table_a_raza,
 )
 
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
+
 UPDATE_NAME = 'dependencies'
 
 DEFAULT_HEAD = RelativeBranch(owner=DEFAULT_HEAD_OWNER, branch=DEFAULT_HEAD_BRANCHES[UPDATE_NAME])
@@ -137,8 +143,14 @@ def print_table(all_updates: DependenciesUpdateResult):
 
 
 def _real_run(args: argparse.Namespace):
+    if yaml is None:
+        raise ImportError(
+            'the pyyaml package (yaml library) is required for updates. '
+            'install the "update" extra to fulfill the requirements'
+        )
+
     repo_info = SERVICED_REPOS[args.repository]
-    repo_path, pr, git = get_update_objects(
+    repo_path, pr, git, existing_commits = get_update_objects(
         args,
         make_absolute_branch(
             args.base_label or ':'.join((repo_info['owner'], repo_info['default_branch'])),
@@ -171,8 +183,9 @@ def _real_run(args: argparse.Namespace):
         print_table(all_updates)
         raise VerificationError('Update verification failed')
 
-    pull_request_body, commit_message = updater.parse_results(
+    pull_request_body, commit_message, merge_commit_message = updater.parse_results(
         all_updates,
+        existing_commits,
         commit_prefix=safe_format(
             args.commit_prefix or repo_info['commit_prefix'],
             category='build',
@@ -182,13 +195,13 @@ def _real_run(args: argparse.Namespace):
             username=pr.head.owner,
         ),
     )
+    git.bot_commit(commit_message, updated_paths)
+
     pr.update_body(pull_request_body)
-    pr.update_commit_message(commit_message)
+    pr.update_commit_message(merge_commit_message)
 
     if template := PULL_REQUEST_TEMPLATES.get(pr.base.repo):
         pr.append_to_body(template)
-
-    git.bot_commit(commit_message, updated_paths)
 
     if args.pr:
         if not git.bot_working_tree_is_clean():

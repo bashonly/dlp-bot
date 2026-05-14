@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import os
 import pathlib
 import re
@@ -14,6 +15,17 @@ from bot.utils import BotError, remove_around
 
 class GitError(BotError):
     pass
+
+
+@dataclasses.dataclass(frozen=True)
+class Commit:
+    sha: str
+    author_name: str
+    author_email: str
+    timestamp: int
+    message: str
+    subject: str
+    body: str
 
 
 class Git:
@@ -106,6 +118,9 @@ class Git:
 
     def checkout(self, /, *args: str) -> list[str]:
         return self._git('checkout', *args)
+
+    def cherry(self, /, *args: str) -> list[str]:
+        return self._git('cherry', *args)
 
     def cherry_pick(self, /, *args: str) -> list[str]:
         return self._git('cherry-pick', *args)
@@ -305,3 +320,29 @@ class Git:
         if result := self.log(*git_args):
             return result[0]
         raise GitError(f'git command failed to return a value: git log {shlex.join(git_args)}')
+
+    def bot_get_commit(self, /, revision: str) -> Commit:
+        def get_field(field: str) -> list[str]:
+            return self.log(f'--format=%{field}', f'{revision}^-')
+
+        try:
+            return Commit(
+                sha=get_field('H')[0],
+                author_name=get_field('aN')[0],
+                author_email=get_field('aE')[0],
+                timestamp=int(get_field('at')[0]),
+                message='\n'.join(get_field('B')),
+                subject=get_field('s')[0],
+                body='\n'.join(get_field('b')),
+            )
+        except (AttributeError, IndexError, TypeError, ValueError):
+            raise GitError(f'unable to get commit info for "{revision}"')
+
+    def bot_list_new_commits(self, /, base: str, *, head: str | None = None) -> list[Commit]:
+        commits = []
+        git_args = list(filter(None, ['--', base, head]))
+        for line in self.cherry(*git_args):
+            if line.startswith('+'):
+                commits.append(self.bot_get_commit(line.removeprefix('+').strip()))
+
+        return commits

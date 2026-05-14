@@ -155,7 +155,7 @@ def update_user_agent_range(
 
 def _real_run(args: argparse.Namespace):
     repo_info = SERVICED_REPOS[REPO]
-    _, pr, git = get_update_objects(
+    _, pr, git, _ = get_update_objects(
         args,
         make_absolute_branch(
             args.base_label or ':'.join((repo_info['owner'], repo_info['default_branch'])),

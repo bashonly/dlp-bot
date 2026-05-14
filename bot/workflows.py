@@ -10,7 +10,10 @@ import re
 import sys
 import typing
 
-from bot.git import Git
+from bot.git import (
+    Commit,
+    Git,
+)
 from bot.github import (
     GitHubAPICaller,
     GitHubPullRequest,
@@ -136,12 +139,14 @@ def make_bulk_commit_message(
     *,
     prefix: str | None = None,
     addendum: str | None = None,
+    serialized_data: str | None = None,
 ) -> str:
     return ''.join((
         make_bulk_commit_title(workflows, all_updates, prefix=prefix),
         '\n\n',
         make_bulk_commit_body(all_updates),
         f'\n\n{addendum}\n' if addendum else '\n',
+        f'\n---\n\n{serialized_data}\n' if serialized_data else '',
     ))
 
 
@@ -173,10 +178,12 @@ def make_incremental_commit_message(
     *,
     prefix: str | None = None,
     addendum: str | None = None,
+    serialized_data: str | None = None,
 ) -> str:
     return ''.join((
         make_action_commit_line(action, old, new, prefix=prefix or ''),
         f'\n\n{addendum}\n' if addendum else '\n',
+        f'\n---\n\n{serialized_data}\n' if serialized_data else '',
     ))
 
 
@@ -286,7 +293,7 @@ class Workflow:
 
     def parse(self) -> dict[typing.Any, typing.Any]:
         if yaml is None:
-            raise WorkflowError('the pyyaml package (yaml library) is required')
+            raise BotError('the pyyaml package (yaml library) is required')
 
         parsed = yaml.safe_load(self.text)
 
@@ -311,6 +318,9 @@ class Workflow:
 
 
 class ActionsUpdater:
+    _UPDATES_KEY = 'actions'
+    _WORKFLOWS_KEY = 'workflows'
+
     def __init__(
         self,
         /,
@@ -591,6 +601,7 @@ class ActionsUpdater:
 
         if commit_type == 'incremental':
             for action, (old, new) in all_updates.items():
+                current_workflows = set()
                 for workflow in workflows:
                     if action in workflow.needed_updates:
                         # temporary actionlint hack
@@ -600,10 +611,20 @@ class ActionsUpdater:
                             workflow.update_pins(old, new)
 
                         workflow.write()
+                        current_workflows.add(workflow)
                         updated_paths.add(workflow.path)
 
+                update = {action: (old, new)}
+                for current_workflow in current_workflows:
+                    current_workflow.updated_actions = update
+
                 commit_msg = make_incremental_commit_message(
-                    action, old, new, prefix=commit_prefix, addendum=commit_addendum
+                    action,
+                    old,
+                    new,
+                    prefix=commit_prefix,
+                    addendum=commit_addendum,
+                    serialized_data=self.serialize_results(list(current_workflows), update),
                 )
                 if not verify:
                     self.git.bot_commit(commit_msg, updated_paths)
@@ -623,7 +644,11 @@ class ActionsUpdater:
                 updated_paths.add(workflow.path)
 
             commit_msg = make_bulk_commit_message(
-                workflows, all_updates, prefix=commit_prefix, addendum=commit_addendum
+                workflows,
+                all_updates,
+                prefix=commit_prefix,
+                addendum=commit_addendum,
+                serialized_data=self.serialize_results(workflows, all_updates),
             )
             if not verify:
                 self.git.bot_commit(commit_msg, updated_paths)
@@ -645,30 +670,164 @@ class ActionsUpdater:
         /,
         workflows: list[Workflow],
         all_updates: ActionsUpdateResult,
+        existing_commits: list[Commit],
         *,
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
     ) -> tuple[str, str]:
         """Returns a tuple of the pull request description and the merge commit message"""
 
-        if len(all_updates) > 1:
+        previous_workflows, previous_updates = self.get_previous_workflows_and_updates(existing_commits)
+
+        # Mutates `workflows`
+        self.reconcile_workflows(previous_workflows, workflows)
+
+        reconciled_updates = self.reconcile_updates(previous_updates, all_updates)
+
+        if len(reconciled_updates) > 1:
             commit_message = make_bulk_commit_message(
                 workflows,
-                all_updates,
+                reconciled_updates,
                 prefix=commit_prefix,
                 addendum=commit_addendum,
             )
         else:
-            action = next(iter(all_updates))
+            action = next(iter(reconciled_updates))
             commit_message = make_incremental_commit_message(
                 action,
-                all_updates[action][0],
-                all_updates[action][1],
+                reconciled_updates[action][0],
+                reconciled_updates[action][1],
                 prefix=commit_prefix,
                 addendum=commit_addendum,
             )
 
         return (
-            make_pull_request_description(workflows, all_updates, prefix=commit_prefix, addendum=commit_addendum),
+            make_pull_request_description(
+                workflows,
+                reconciled_updates,
+                prefix=commit_prefix,
+                addendum=commit_addendum,
+            ),
             commit_message,
         )
+
+    @staticmethod
+    def _serialize_pin(pin: ActionPin) -> dict[str, str]:
+        pin_dict = dataclasses.asdict(pin)
+        del pin_dict['action']
+        return pin_dict
+
+    def serialize_results(self, /, workflows: list[Workflow], updates: ActionsUpdateResult) -> str:
+        if yaml is None:
+            raise BotError('the pyyaml package (yaml library) is required')
+
+        serialized_updates: dict[str, list[dict[str, str]]] = {
+            f'{action.owner}/{action.repo}': [
+                self._serialize_pin(old_pin),
+                self._serialize_pin(new_pin),
+            ]
+            for action, (old_pin, new_pin) in updates.items()
+        }
+
+        serialized_workflows: dict[str, list[str]] = {
+            str(workflow.path): [f'{action.owner}/{action.repo}' for action in workflow.updated_actions]
+            for workflow in workflows
+        }
+
+        return yaml.safe_dump(
+            {
+                self._UPDATES_KEY: serialized_updates,
+                self._WORKFLOWS_KEY: serialized_workflows,
+            },
+            sort_keys=False,
+        )
+
+    def deserialize_results(self, /, text: str) -> tuple[list[Workflow], ActionsUpdateResult]:
+        if yaml is None:
+            raise BotError('the pyyaml package (yaml library) is required')
+
+        parsed_yaml = yaml.safe_load(text) or {}
+
+        workflows: list[Workflow] = []
+        serialized_workflows: dict[str, list[str]] = parsed_yaml.get(self._WORKFLOWS_KEY, {})
+        for workflow_path, updated_actions in serialized_workflows.items():
+            workflow = Workflow(pathlib.Path(workflow_path))
+            for action_name in updated_actions:
+                action = Action(*parse_owner_and_repo(action_name), default_branch='_')
+                workflow.updated_actions[action] = (
+                    ActionPin(action, sha='_', tag='_'),
+                    ActionPin(action, sha='_', tag='_'),
+                )
+            workflows.append(workflow)
+
+        updates: ActionsUpdateResult = {}
+        serialized_updates: dict[str, list[dict[str, str]]] = parsed_yaml.get(self._UPDATES_KEY, {})
+        for action_name, (old_attrs, new_attrs) in serialized_updates.items():
+            action = Action(*parse_owner_and_repo(action_name), default_branch='_')
+            updates[action] = (
+                ActionPin(action, **old_attrs),
+                ActionPin(action, **new_attrs),
+            )
+
+        return workflows, updates
+
+    def get_previous_workflows_and_updates(
+        self,
+        /,
+        commits: list[Commit],
+    ) -> tuple[list[Workflow], ActionsUpdateResult]:
+        all_workflows: list[Workflow] = []
+        previous_updates: ActionsUpdateResult = {}
+        oldest: dict[Action, ActionPin] = {}
+        newest: dict[Action, ActionPin] = {}
+
+        for commit in sorted(commits, key=lambda c: c.timestamp):
+            workflows, updates = self.deserialize_results(commit.body.partition('\n---\n')[2])
+            self.reconcile_workflows(workflows, all_workflows)
+
+            for action, (old, new) in updates.items():
+                if action not in oldest:
+                    oldest[action] = old
+                newest[action] = new
+
+        for action, oldest_pin in oldest.items():
+            previous_updates[action] = (oldest_pin, newest[action])
+
+        return all_workflows, previous_updates
+
+    def reconcile_workflows(
+        self,
+        /,
+        previous_workflows: list[Workflow],
+        new_workflows: list[Workflow],
+    ):
+        """Mutates new_workflows to include previous_workflows"""
+        for workflow in previous_workflows:
+            new_workflow = next((w for w in new_workflows if w.path == workflow.path), None)
+            if not new_workflow:
+                new_workflows.append(workflow)
+                continue
+            for updated_action, (old, new) in workflow.updated_actions.items():
+                if updated_action in new_workflow.updated_actions:
+                    continue
+                new_workflow.updated_actions[updated_action] = (old, new)
+
+    def reconcile_updates(
+        self,
+        /,
+        previous_updates: ActionsUpdateResult,
+        new_updates: ActionsUpdateResult,
+    ) -> ActionsUpdateResult:
+        result: ActionsUpdateResult = {}
+
+        for package, (old, new) in previous_updates.items():
+            if package not in new_updates:
+                result[package] = (old, new)
+            else:
+                result[package] = (old, new_updates[package][1])
+
+        for package, (old, new) in new_updates.items():
+            if package not in result:
+                result[package] = (old, new)
+
+        return result

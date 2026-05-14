@@ -98,12 +98,12 @@ def print_table(all_updates: ActionsUpdateResult):
 def _real_run(args: argparse.Namespace):
     if yaml is None:
         raise ImportError(
-            'the pyyaml package (yaml library) is required for workflows. '
-            'install the "workflows" extra to fulfill the requirements'
+            'the pyyaml package (yaml library) is required for updates. '
+            'install the "update" extra to fulfill the requirements'
         )
 
     repo_info = SERVICED_REPOS[args.repository]
-    _, pr, git = get_update_objects(
+    _, pr, git, existing_commits = get_update_objects(
         args,
         make_absolute_branch(
             args.base_label or ':'.join((repo_info['owner'], repo_info['default_branch'])),
@@ -141,6 +141,7 @@ def _real_run(args: argparse.Namespace):
     pull_request_body, merge_commit_message = updater.parse_results(
         workflows,
         all_updates,
+        existing_commits,
         commit_prefix=formatted_prefix,
         commit_addendum=formatted_addendum,
     )

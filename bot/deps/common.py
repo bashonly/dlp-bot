@@ -4,7 +4,16 @@ import contextlib
 import pathlib
 import re
 
-type DependenciesUpdateResult = dict[str, tuple[str, str] | tuple[str, None] | tuple[None, str]]
+from bot.git import Commit
+from bot.utils import BotError
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
+type DependencyDiffType = tuple[str, str] | tuple[str, None] | tuple[None, str] | tuple[str | None, str | None]
+type DependenciesUpdateResult = dict[str, DependencyDiffType]
 
 
 def package_diff_dict(old_dict: dict[str, str], new_dict: dict[str, str]) -> DependenciesUpdateResult:
@@ -47,8 +56,10 @@ def make_commit_message(
     *,
     prefix: str | None = None,
     addendum: str | None = None,
+    serialized_data: str | None = None,
 ) -> str:
     addendum = f'\n\n{addendum}\n' if addendum else '\n'
+    serialized_data = f'\n---\n\n{serialized_data}\n' if serialized_data else ''
 
     if len(all_updates) > 1:
         return ''.join((
@@ -56,6 +67,7 @@ def make_commit_message(
             '\n\n',
             make_commit_body(all_updates),
             addendum,
+            serialized_data,
         ))
     else:
         package, (old, new) = next(iter(all_updates.items()))
@@ -63,6 +75,7 @@ def make_commit_message(
         return ''.join((
             make_commit_line(package, old, new, prefix=prefix or ''),
             addendum,
+            serialized_data,
         ))
 
 
@@ -110,6 +123,8 @@ class DependenciesUpdater:
     @param project:         an instance of Project or a Project subclass
     """
 
+    _UPDATES_KEY = 'dependencies'
+
     def __init__(
         self,
         /,
@@ -133,14 +148,73 @@ class DependenciesUpdater:
         self,
         /,
         all_updates: DependenciesUpdateResult,
+        existing_commits: list[Commit],
         **kwargs,
-    ) -> tuple[str, str]:
+    ) -> tuple[str, str, str]:
         """Parse the update results and generate text for PRs and commits.
 
         Required positional argument(s):
 
-        @param all_updates:     the dict of result data that was returned from update()
+        @param all_updates:         the dict of result data that was returned from update()
 
-        Should return a tuple of the pull request description string and commit message string.
+        @param existing_commits:    a list of bot.git.Commit objects from previous update(s)
+
+        Should return a tuple of pull request description, commit message, and merge commit message.
         """
         raise NotImplementedError('this method must be implemented by subclasses')
+
+    def serialize_results(self, /, updates: DependenciesUpdateResult) -> str:
+        if yaml is None:
+            raise BotError('the pyyaml package (yaml library) is required')
+
+        return yaml.safe_dump({self._UPDATES_KEY: updates}, sort_keys=False)
+
+    def deserialize_results(self, /, text: str) -> DependenciesUpdateResult:
+        if yaml is None:
+            raise BotError('the pyyaml package (yaml library) is required')
+
+        parsed_yaml = yaml.safe_load(text) or {}
+        serialized_updates = parsed_yaml.get(self._UPDATES_KEY, {})
+        updates: DependenciesUpdateResult = {}
+
+        for package, (old, new) in serialized_updates.items():
+            updates[package] = (old, new)
+
+        return updates
+
+    def get_previous_updates(self, /, commits: list[Commit]) -> DependenciesUpdateResult:
+        previous_updates: DependenciesUpdateResult = {}
+        oldest: dict[str, str | None] = {}
+        newest: dict[str, str | None] = {}
+
+        for commit in sorted(commits, key=lambda c: c.timestamp):
+            updates = self.deserialize_results(commit.body.partition('\n---\n')[2])
+            for package, (old, new) in updates.items():
+                if package not in oldest:
+                    oldest[package] = old
+                newest[package] = new
+
+        for package, oldest_version in oldest.items():
+            previous_updates[package] = (oldest_version, newest[package])
+
+        return previous_updates
+
+    def reconcile_updates(
+        self,
+        /,
+        previous_updates: DependenciesUpdateResult,
+        new_updates: DependenciesUpdateResult,
+    ) -> DependenciesUpdateResult:
+        result: DependenciesUpdateResult = {}
+
+        for package, (old, new) in previous_updates.items():
+            if package not in new_updates:
+                result[package] = (old, new)
+            else:
+                result[package] = (old, new_updates[package][1])
+
+        for package, (old, new) in new_updates.items():
+            if package not in result:
+                result[package] = (old, new)
+
+        return result

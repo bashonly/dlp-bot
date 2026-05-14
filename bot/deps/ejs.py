@@ -19,6 +19,7 @@ from bot.deps.common import (
     make_commit_line,
     package_diff_dict,
 )
+from bot.git import Commit
 from bot.github import (
     GITHUB_URL_RE,
     GitHubAPICaller,
@@ -51,8 +52,10 @@ def make_ejs_commit_message(
     *,
     prefix: str | None = None,
     addendum: str | None = None,
+    serialized_data: str | None = None,
 ) -> str:
     addendum = f'\n\n{addendum}\n' if addendum else '\n'
+    serialized_data = f'\n---\n\n{serialized_data}\n' if serialized_data else ''
 
     if len(all_updates) > 1:
         if not updates or not dev_updates:
@@ -68,6 +71,7 @@ def make_ejs_commit_message(
             '\n\n',
             commit_body,
             addendum,
+            serialized_data,
         ))
     else:
         package, (old, new) = next(iter(all_updates.items()))
@@ -75,6 +79,7 @@ def make_ejs_commit_message(
         return ''.join((
             make_commit_line(package, old, new, prefix=prefix or ''),
             addendum,
+            serialized_data,
         ))
 
 
@@ -430,16 +435,24 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         self,
         /,
         all_updates: DependenciesUpdateResult,
+        existing_commits: list[Commit],
         *,
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
         **kwargs,
-    ) -> tuple[str, str]:
-        """Returns a tuple of the pull request description and the merge commit message"""
+    ) -> tuple[str, str, str]:
+        """Returns a tuple of pull request description, commit message, and merge commit message"""
+
+        all_reconciled_updates = self.reconcile_updates(
+            self.get_previous_updates(existing_commits),
+            all_updates,
+        )
 
         dependencies = self.load_package_json()['dependencies']
         updates: DependenciesUpdateResult = {}
         dev_updates: DependenciesUpdateResult = {}
+        reconciled_updates: DependenciesUpdateResult = {}
+        reconciled_dev_updates: DependenciesUpdateResult = {}
 
         for package_name, diff_tuple in all_updates.items():
             if package_name in dependencies:
@@ -447,7 +460,27 @@ class EJSDependenciesUpdater(DependenciesUpdater):
             else:
                 dev_updates[package_name] = diff_tuple
 
+        for package_name, diff_tuple in all_reconciled_updates.items():
+            if package_name in dependencies:
+                reconciled_updates[package_name] = diff_tuple
+            else:
+                reconciled_dev_updates[package_name] = diff_tuple
+
         return (
-            self._make_pull_request_description(updates, dev_updates),
-            make_ejs_commit_message(all_updates, updates, dev_updates, prefix=commit_prefix, addendum=commit_addendum),
+            self._make_pull_request_description(reconciled_updates, reconciled_dev_updates),
+            make_ejs_commit_message(
+                all_updates,
+                updates,
+                dev_updates,
+                prefix=commit_prefix,
+                addendum=commit_addendum,
+                serialized_data=self.serialize_results(all_updates),
+            ),
+            make_ejs_commit_message(
+                all_reconciled_updates,
+                reconciled_updates,
+                reconciled_dev_updates,
+                prefix=commit_prefix,
+                addendum=commit_addendum,
+            ),
         )

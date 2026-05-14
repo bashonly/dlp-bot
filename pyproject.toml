@@ -24,7 +24,7 @@ license-files = ["LICENSE"]
 dependencies = []
 
 [project.optional-dependencies]
-update-actions = [
+update = [
     "pyyaml~=6.0.0",
 ]
 update-dependencies = [

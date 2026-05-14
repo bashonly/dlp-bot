@@ -22,6 +22,7 @@ from bot.deps.common import (
     make_commit_message,
     package_diff_dict,
 )
+from bot.git import Commit
 from bot.github import (
     GITHUB_URL_RE,
     GitHubAPICaller,
@@ -595,14 +596,26 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         self,
         /,
         all_updates: DependenciesUpdateResult,
+        existing_commits: list[Commit],
         *,
         commit_prefix: str | None = None,
         commit_addendum: str | None = None,
         **kwargs,
-    ) -> tuple[str, str]:
-        """Returns a tuple of the pull request description and the merge commit message"""
+    ) -> tuple[str, str, str]:
+        """Returns a tuple of pull request description, commit message, and merge commit message"""
+
+        reconciled_updates = self.reconcile_updates(
+            self.get_previous_updates(existing_commits),
+            all_updates,
+        )
 
         return (
-            self._make_pull_request_description(all_updates),
-            make_commit_message(all_updates, prefix=commit_prefix, addendum=commit_addendum),
+            self._make_pull_request_description(reconciled_updates),
+            make_commit_message(
+                all_updates,
+                prefix=commit_prefix,
+                addendum=commit_addendum,
+                serialized_data=self.serialize_results(all_updates),
+            ),
+            make_commit_message(reconciled_updates, prefix=commit_prefix, addendum=commit_addendum),
         )
