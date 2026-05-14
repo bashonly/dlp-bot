@@ -89,5 +89,6 @@ jobs:
             --verbose \
             --git-protocol https \
             --head "${HEAD_OWNER}:${HEAD_BRANCH}" \
+            --overwrite-pr \
             -- \
             ../"${WORKING_REPO}"

@@ -84,12 +84,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.BOT_TOKEN }}
           WORKING_REPO: ${{ matrix.repo }}
+          REBASE_PR: ${{ (vars.UPDATE_USER_AGENT_REBASE && '1') || '0' }}
+          OVERWRITE_PR: ${{ (vars.UPDATE_USER_AGENT_OVERWRITE && '1') || '0' }}
         run: |
           cd dlp-bot
+          optional_args=()
+          if (( REBASE_PR )); then
+            optional_args+=(--rebase-pr)
+          fi
+          if (( OVERWRITE_PR )); then
+            optional_args+=(--overwrite-pr)
+          fi
           python -m bot update user-agent \
             --pr \
             --verbose \
             --git-protocol https \
             --head "${HEAD_OWNER}:${HEAD_BRANCH}" \
+            "${optional_args[@]}" \
             -- \
             ../"${WORKING_REPO}"
