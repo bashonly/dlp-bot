@@ -330,7 +330,9 @@ def get_update_objects(
         'head_label',
         # configure_update_options
         'clone',
+        'overwrite_pr',
         'pr',
+        'rebase_pr',
         'use_current_worktree',
         'verify',
         # configure_git_options
@@ -408,7 +410,7 @@ def get_update_objects(
         if args.pr or args.verify:
             # We need to add the "origin" / head remote or else verify it already exists w/correct URL:
             # - If creating a pull request (--pr), we'll push to this remote later
-            # - If verifying a pull request's update (--verify-head-branch), we'll pull from this remote
+            # - If verifying a PR's update (--verify --no-use-current-worktree), we pull from this remote
             git.bot_add_or_verify_remote(head_remote, head_forge, pr.head.owner, pr.head.repo)
 
         if args.verify:
