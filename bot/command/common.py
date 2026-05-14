@@ -96,6 +96,28 @@ def configure_update_options(
         ),
     )
     group.add_argument(
+        '--rebase-pr',
+        dest='rebase_pr',
+        default=False,
+        action=boolean_if_true_negates_others('overwrite_pr'),
+        help=(
+            'whether to rebase an existing pull request branch on the base branch '
+            '(default: --no-rebase-pr) (--rebase-pr implies: --no-overwrite-pr) '
+            '(has no effect if --pr is not used)'
+        ),
+    )
+    group.add_argument(
+        '--ovewrite-pr',
+        dest='overwrite_pr',
+        default=False,
+        action=boolean_if_true_negates_others('rebase_pr'),
+        help=(
+            'whether to overwrite an existing pull request branch with new-from-scratch updates '
+            '(default: --no-overwrite-pr) (--overwrite-pr implies: --no-rebase-pr) '
+            '(has no effect if --pr is not used)'
+        ),
+    )
+    group.add_argument(
         '--clone',
         dest='clone',
         default=False,
@@ -367,19 +389,20 @@ def get_update_objects(
     if not (args.use_current_worktree and args.verify) and not git.bot_working_tree_is_clean():
         raise GitError('manual intervention needed; git current worktree has uncommitted changes')
 
-    # Are we updating an existing PR?
-    if args.pr and pr.is_open():
+    # Are we updating an existing PR branch?
+    if args.pr and not args.overwrite_pr and pr.is_open():
         git.bot_add_or_verify_remote(head_remote, head_forge, pr.head.owner, pr.head.repo)
         git.bot_fetch_origin()
         git.bot_overwrite_branch(pr.head.branch, f'{head_remote}/{pr.head.branch}')
 
         git.bot_add_or_verify_remote(base_remote, base_forge, pr.base.owner, pr.base.repo)
         git.bot_fetch_upstream()
-        git.rebase(f'{base_remote}/{pr.base.branch}')
+        if args.rebase_pr:
+            git.rebase(f'{base_remote}/{pr.base.branch}')
 
         return repo_path, pr, git, git.bot_list_new_commits(f'{base_remote}/{pr.base.branch}')
 
-    # Not updating an existing PR
+    # Not updating an existing PR branch
     if not args.use_current_worktree:
         if args.pr or args.verify:
             # We need to add the "origin" / head remote or else verify it already exists w/correct URL:
