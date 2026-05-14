@@ -19,7 +19,10 @@ from bot.command.common import (
     configure_update_options,
     get_update_objects,
 )
-from bot.git import GitError
+from bot.git import (
+    Commit,
+    GitError,
+)
 from bot.github import (
     RelativeBranch,
     make_absolute_branch,
@@ -36,6 +39,12 @@ from bot.utils import (
     SuccessMessage,
     VerificationError,
 )
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
 
 UPDATE_NAME = 'user-agent'
 
@@ -132,7 +141,7 @@ def update_user_agent_range(
     *,
     verify: bool = False,
     verbose: bool = False,
-) -> str:
+) -> tuple[tuple[int, int], tuple[int, int]]:
     module_text = module_path.read_text()
     range_line = _get_old_range_line(module_text)
     old_range = _get_old_user_agent_range(range_line)
@@ -140,22 +149,64 @@ def update_user_agent_range(
 
     if old_range == new_range:
         raise SuccessMessage('user-agent version range is up-to-date')
-
-    description = f'Bump version range {old_range} => {new_range}'
-
-    if verify:
-        print(description)
+    elif verify:
         raise VerificationError('update verification failed')
 
     with module_path.open(mode='w') as f:
         f.writelines(_replace_user_agent_range(module_text, range_line, new_range))
 
-    return description
+    return old_range, new_range
+
+
+def _make_ua_pull_request_body_and_commit_message(
+    old_range: tuple[int, int],
+    new_range: tuple[int, int],
+    author: str,
+    *,
+    include_serialized_data: bool = True,
+) -> tuple[str, str]:
+    body = f'Bump version range {old_range} => {new_range}'
+
+    serialized_data_lines = [
+        '---',
+        yaml.safe_dump({'user-agent': {'old': old_range, 'new': new_range}}, sort_keys=False),
+    ]
+
+    return f'{body}\n', '\n\n'.join((
+        f'[utils] `random_user_agent`: {old_range} => {new_range}',
+        body,
+        f'Authored by: {author}',
+        *(serialized_data_lines if include_serialized_data else []),
+    ))
+
+
+def _get_original_user_agent_range(
+    commits: list[Commit],
+    old_range: tuple[int, int],
+) -> tuple[int, int]:
+    for commit in sorted(commits, key=lambda c: c.timestamp):
+        parsed_yaml = yaml.safe_load(commit.body.partition('\n---\n')[2])
+        if not parsed_yaml:
+            continue
+
+        update: dict[str, list[int]] = parsed_yaml.get('user-agent', {})
+        if not update or not update.get('old'):
+            continue
+
+        return update['old'][0], update['old'][1]
+
+    return old_range
 
 
 def _real_run(args: argparse.Namespace):
+    if yaml is None:
+        raise ImportError(
+            'the pyyaml package (yaml library) is required for updates. '
+            'install the "update" extra to fulfill the requirements'
+        )
+
     repo_info = SERVICED_REPOS[REPO]
-    _, pr, git, _ = get_update_objects(
+    _, pr, git, existing_commits = get_update_objects(
         args,
         make_absolute_branch(
             args.base_label or ':'.join((repo_info['owner'], repo_info['default_branch'])),
@@ -173,20 +224,29 @@ def _real_run(args: argparse.Namespace):
     if not module_path.is_file():
         raise BotError('unable to find yt_dlp.utils.networking module')
 
-    pull_request_body = update_user_agent_range(
+    old_range, new_range = update_user_agent_range(
         module_path,
         verify=args.verify,
         verbose=args.verbose,
     )
-    commit_message = f'[utils] `random_user_agent`: {pull_request_body}\n\nAuthored by: {pr.head.owner}\n'
+
+    pull_request_body, merge_commit_message = _make_ua_pull_request_body_and_commit_message(
+        _get_original_user_agent_range(existing_commits, old_range),
+        new_range,
+        pr.head.owner,
+        include_serialized_data=False,
+    )
 
     pr.update_body(pull_request_body)
-    pr.update_commit_message(commit_message)
+    pr.update_commit_message(merge_commit_message)
 
     if template := PULL_REQUEST_TEMPLATES.get(pr.base.repo):
         pr.append_to_body(template)
 
-    git.bot_commit(commit_message, {module_path})
+    git.bot_commit(
+        _make_ua_pull_request_body_and_commit_message(old_range, new_range, pr.head.owner)[1],
+        {module_path},
+    )
 
     if args.pr:
         if not git.bot_working_tree_is_clean():
