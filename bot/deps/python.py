@@ -126,8 +126,12 @@ def parse_dependency(line: str) -> PythonDependency:
     )
 
 
-def get_lock_packages(lock: dict[str, typing.Any]) -> dict[str, str]:
-    return {package['name']: package['version'] for package in lock['package'] if package.get('version')}
+def get_lock_packages(lock: dict[str, typing.Any], ignore_names: list[str] | None = None) -> dict[str, str]:
+    return {
+        package['name']: package['version']
+        for package in lock['package']
+        if package.get('version') and package['name'] not in (ignore_names or [])
+    }
 
 
 def get_dependencies(pyproject_toml: dict[str, typing.Any]) -> list[str]:
@@ -435,9 +439,10 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         self.uv('lock', upgrade_arg, env=env)
         updated_paths.add(self.lockfile_path)
 
+        package_name = self.load_pyproject_toml()['project']['name']
         all_updates = package_diff_dict(
-            get_lock_packages(og_lockfile_toml) if og_lockfile_toml else {},
-            get_lock_packages(self.load_lockfile_toml()),
+            get_lock_packages(og_lockfile_toml, [package_name]) if og_lockfile_toml else {},
+            get_lock_packages(self.load_lockfile_toml(), [package_name]),
         )
 
         self._post_upgrade(
