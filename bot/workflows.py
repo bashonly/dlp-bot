@@ -822,14 +822,14 @@ class ActionsUpdater:
     ) -> ActionsUpdateResultType:
         result: ActionsUpdateResultType = {}
 
-        for package, (old, new) in previous_updates.items():
-            if package not in new_updates:
-                result[package] = (old, new)
+        for action, (old, new) in previous_updates.items():
+            if action not in new_updates:
+                result[action] = (old, new)
             else:
-                result[package] = (old, new_updates[package][1])
+                result[action] = (old, new_updates[action][1])
 
-        for package, (old, new) in new_updates.items():
-            if package not in result:
-                result[package] = (old, new)
+        for action, (old, new) in new_updates.items():
+            if action not in result:
+                result[action] = (old, new)
 
         return result
