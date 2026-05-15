@@ -755,7 +755,11 @@ class ActionsUpdater:
         for workflow_path, updated_actions in serialized_workflows.items():
             workflow = Workflow(self.workflows_path / workflow_path)
             for action_name in updated_actions:
-                action = Action(*parse_owner_and_repo(action_name), default_branch='_')
+                owner, repo = parse_owner_and_repo(action_name)
+                if (owner, repo) in self._actions_cache:
+                    action = self._actions_cache[(owner, repo)]
+                else:
+                    action = Action(owner, repo, default_branch='_')
                 workflow.updated_actions[action] = (
                     ActionPin(action, sha='_', tag='_'),
                     ActionPin(action, sha='_', tag='_'),
@@ -765,7 +769,11 @@ class ActionsUpdater:
         updates: ActionsUpdateResultType = {}
         serialized_updates: dict[str, list[dict[str, str]]] = parsed_yaml.get(self._UPDATES_KEY, {})
         for action_name, (old_attrs, new_attrs) in serialized_updates.items():
-            action = Action(*parse_owner_and_repo(action_name), default_branch='_')
+            owner, repo = parse_owner_and_repo(action_name)
+            if (owner, repo) in self._actions_cache:
+                action = self._actions_cache[(owner, repo)]
+            else:
+                action = Action(owner, repo, default_branch='_')
             updates[action] = (
                 ActionPin(action, **old_attrs),
                 ActionPin(action, **new_attrs),
