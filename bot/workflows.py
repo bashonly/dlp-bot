@@ -734,6 +734,7 @@ class ActionsUpdater:
                 f'{action.owner}/{action.repo}' for action in workflow.updated_actions
             ]
             for workflow in workflows
+            if workflow.updated_actions
         }
 
         return yaml.safe_dump(
