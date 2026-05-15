@@ -730,7 +730,9 @@ class ActionsUpdater:
         }
 
         serialized_workflows: dict[str, list[str]] = {
-            str(workflow.path): [f'{action.owner}/{action.repo}' for action in workflow.updated_actions]
+            str(workflow.path.relative_to(self.workflows_path)): [
+                f'{action.owner}/{action.repo}' for action in workflow.updated_actions
+            ]
             for workflow in workflows
         }
 
@@ -751,7 +753,7 @@ class ActionsUpdater:
         workflows: list[Workflow] = []
         serialized_workflows: dict[str, list[str]] = parsed_yaml.get(self._WORKFLOWS_KEY, {})
         for workflow_path, updated_actions in serialized_workflows.items():
-            workflow = Workflow(pathlib.Path(workflow_path))
+            workflow = Workflow(self.workflows_path / workflow_path)
             for action_name in updated_actions:
                 action = Action(*parse_owner_and_repo(action_name), default_branch='_')
                 workflow.updated_actions[action] = (
