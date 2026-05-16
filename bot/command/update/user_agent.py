@@ -175,8 +175,7 @@ def _make_ua_pull_request_body_and_commit_message(
     ]
 
     return f'{body}\n', '\n\n'.join((
-        f'[utils] `random_user_agent`: {old_range} => {new_range}',
-        body,
+        f'[utils] `random_user_agent`: {body}',
         f'Authored by: {author}',
         *(serialized_data_lines if include_serialized_data else []),
     ))
