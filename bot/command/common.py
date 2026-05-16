@@ -435,7 +435,7 @@ def get_update_objects(
             base.owner,
             base.repo,
             pr.number,
-            since=git.bot_get_commit(git.bot_rev_parse(f'{head_remote}/HEAD')).timestamp,
+            since=git.bot_get_commit(git.bot_rev_parse(f'refs/remotes/{head_remote}/{pr.head.branch}')).timestamp,
         )
         overwrite_pr_comments = [
             comment for comment in comments_list if f'{args.pr_command_prefix} overwrite' in comment['body']
