@@ -388,6 +388,7 @@ class GitHubAPICaller(BaseAPICaller):
         repo: str,
         issue_number: str,
         *,
+        body_type: str | None = None,
         since: str | float | int | dt.datetime | None = None,
         per_page: str | None = None,
         page: str | None = None,
@@ -399,6 +400,7 @@ class GitHubAPICaller(BaseAPICaller):
         @param owner:                   repository owner
         @param repo:                    repository name
         @param issue_number:            the number that identifies the issue or pull request
+        @param body_type:               (optional) one of 'raw' (default), 'text', 'html' or 'full'
         @param since:                   (optional) timestamp in ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
         @param per_page:                (optional) number of results per page (default: 30)
         @param page:                    (optional) page number (default: 1)
@@ -412,6 +414,12 @@ class GitHubAPICaller(BaseAPICaller):
             if not isinstance(since, str):
                 raise ValueError(f'Invalid since value: {since}')
 
+        headers = None
+        if body_type in {'raw', 'text', 'html', 'full'}:
+            headers = {'Accept': f'application/vnd.github.{body_type}+json'}
+        elif body_type is not None:
+            raise ValueError(f'Invalid body_type value: {body_type}')
+
         return self.call(
             f'/repos/{owner}/{repo}/issues/{issue_number}/comments',
             query={
@@ -419,6 +427,7 @@ class GitHubAPICaller(BaseAPICaller):
                 'per_page': per_page,
                 'page': page,
             },
+            headers=headers,
         )
 
     # Pull requests: https://docs.github.com/en/rest/pulls/pulls?apiVersion=2026-03-10
