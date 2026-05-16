@@ -796,6 +796,18 @@ class GitHubAPICaller(BaseAPICaller):
             },
         )
 
+    # Users => Users: https://docs.github.com/en/rest/users/users?apiVersion=2026-03-10
+
+    def get_a_user(self, /, username: str):
+        """Get a user
+
+        Ref: https://docs.github.com/en/rest/users/users?apiVersion=2026-03-10#get-a-user
+
+        @param username:                the handle for the GitHub user account
+        @returns                        dict of info about the GitHub user account
+        """
+        return self.call(f'/users/{username}')
+
 
 class GitHubWebFetcher(BaseAPICaller):
     _WEB_BASE_URL = 'https://github.com/'
