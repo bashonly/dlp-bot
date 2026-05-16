@@ -1234,7 +1234,7 @@ class GitHubPullRequest:
 
     def update_commit_message(self, /, text: str | None) -> str | None:
         self._commit_message = text or None
-        if text and not self.title:
+        if text:
             self.update_title(text)
 
         return self._commit_message
