@@ -2,6 +2,7 @@ name: CI
 on:
   push:
     branches: ['main']
+  # This workflow contains required checks and needs to run for EVERY pull_request
   pull_request:
     branches: ['**']
 
@@ -121,6 +122,7 @@ jobs:
           mypy bot/
 
   all:
+    # Required check; do not change name
     name: all
     needs: [actionlint, zizmor, ruff, mypy]
     runs-on: ubuntu-slim
