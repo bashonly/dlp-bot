@@ -16,7 +16,10 @@ from bot.github import (
     GitHubPullRequest,
 )
 from bot.knowledge import GIT_FORGE
-from bot.utils import parse_datetime_from_cooldown
+from bot.utils import (
+    BotError,
+    parse_datetime_from_cooldown,
+)
 
 
 def boolean_if_true_negates_others(*dests_to_negate):
@@ -377,6 +380,9 @@ def get_update_objects(
         'verbose',
     ):
         assert hasattr(args, attr), f'args namespace is missing a required attribute: {attr}'
+
+    if base.full_label == head.full_label and not args.use_current_worktree:
+        raise BotError('base branch and head branch cannot be the same branch')
 
     if not args.directory:
         if args.clone:
