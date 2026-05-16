@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import collections.abc
 import dataclasses
+import datetime as dt
 import itertools
 import json
 import pathlib
@@ -376,6 +377,48 @@ class GitHubAPICaller(BaseAPICaller):
                 'make_latest': make_latest,
             }),
             method='POST',
+        )
+
+    # Issues => Comments: https://docs.github.com/en/rest/issues/comments?apiVersion=2026-03-10
+
+    def list_issue_comments(
+        self,
+        /,
+        owner: str,
+        repo: str,
+        issue_number: str,
+        *,
+        since: str | float | int | dt.datetime | None = None,
+        per_page: str | None = None,
+        page: str | None = None,
+    ):
+        """List issue comments
+
+        Ref: https://docs.github.com/en/rest/issues/comments?apiVersion=2026-03-10#list-issue-comments
+
+        @param owner:                   repository owner
+        @param repo:                    repository name
+        @param issue_number:            the number that identifies the issue or pull request
+        @param since:                   (optional) timestamp in ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
+        @param per_page:                (optional) number of results per page (default: 30)
+        @param page:                    (optional) page number (default: 1)
+        @returns                        list of issue comments for {owner}/{repo}/issues/{issue_number}
+        """
+        if since is not None:
+            if isinstance(since, (float, int)):
+                since = dt.datetime.fromtimestamp(since, tz=dt.UTC)
+            if isinstance(since, dt.datetime):
+                since = since.strftime('%Y-%m-%dT%H:%M:%SZ')
+            if not isinstance(since, str):
+                raise ValueError(f'Invalid since value: {since}')
+
+        return self.call(
+            f'/repos/{owner}/{repo}/issues/{issue_number}/comments',
+            query={
+                'since': since,
+                'per_page': per_page,
+                'page': page,
+            },
         )
 
     # Pull requests: https://docs.github.com/en/rest/pulls/pulls?apiVersion=2026-03-10
