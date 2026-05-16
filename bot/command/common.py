@@ -450,9 +450,7 @@ def get_update_objects(
                             commander_ids.add(member['id'])
                     else:
                         commander_ids.add(pr.api.get_a_user(allowed_name)['id'])
-                overwrite_pr = bool(
-                    comment for comment in overwrite_pr_comments if comment['user']['id'] in commander_ids
-                )
+                overwrite_pr = any(comment['user']['id'] in commander_ids for comment in overwrite_pr_comments)
             else:
                 overwrite_pr = True
 
