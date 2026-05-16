@@ -25,7 +25,7 @@ from bot.utils import (
     request,
 )
 
-REQS_OUTPUT_TMPL = 'requirements-{}.txt'
+REQS_OUTPUT_TMPL = '{}.txt'
 
 PINNED_EXTRAS = {
     'pin': 'default',
