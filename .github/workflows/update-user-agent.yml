@@ -86,6 +86,8 @@ jobs:
           WORKING_REPO: ${{ matrix.repo }}
           REBASE_PR: ${{ (vars.UPDATE_USER_AGENT_REBASE && '1') || '0' }}
           OVERWRITE_PR: ${{ (vars.UPDATE_USER_AGENT_OVERWRITE && '1') || '0' }}
+          UPDATE_PR_COMMAND_PREFIX: ${{ vars.UPDATE_PR_COMMAND_PREFIX || '@dlp-bot' }}
+          UPDATE_PR_COMMAND_ALLOWLIST: ${{ vars.UPDATE_PR_COMMAND_ALLOWLIST || '@yt-dlp/core' }}
         run: |
           cd dlp-bot
           optional_args=()
@@ -100,6 +102,8 @@ jobs:
             --verbose \
             --git-protocol https \
             --head "${HEAD_OWNER}:${HEAD_BRANCH}" \
+            --pr-command-prefix "${UPDATE_PR_COMMAND_PREFIX}" \
+            --pr-command-allowlist "${UPDATE_PR_COMMAND_ALLOWLIST}" \
             "${optional_args[@]}" \
             -- \
             ../"${WORKING_REPO}"

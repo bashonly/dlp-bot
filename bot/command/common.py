@@ -96,28 +96,6 @@ def configure_update_options(
         ),
     )
     group.add_argument(
-        '--rebase-pr',
-        dest='rebase_pr',
-        default=False,
-        action=boolean_if_true_negates_others('overwrite_pr'),
-        help=(
-            'whether to rebase an existing pull request branch on the base branch '
-            '(default: --no-rebase-pr) (--rebase-pr implies: --no-overwrite-pr) '
-            '(has no effect if --pr is not used)'
-        ),
-    )
-    group.add_argument(
-        '--ovewrite-pr',
-        dest='overwrite_pr',
-        default=False,
-        action=boolean_if_true_negates_others('rebase_pr'),
-        help=(
-            'whether to overwrite an existing pull request branch with new-from-scratch updates '
-            '(default: --no-overwrite-pr) (--overwrite-pr implies: --no-rebase-pr) '
-            '(has no effect if --pr is not used)'
-        ),
-    )
-    group.add_argument(
         '--clone',
         dest='clone',
         default=False,
@@ -162,6 +140,56 @@ def configure_update_options(
             ),
             type=parse_datetime_from_cooldown,
         )
+
+    return group
+
+
+# XXX: should always be used together with bot.common.configure_update_options()
+def configure_update_pr_options(parser: argparse.ArgumentParser) -> argparse._ArgumentGroup:
+    group = parser.add_argument_group(
+        'update pull request options',
+        description='these options are only effective if the --pr option is used',
+    )
+    group.add_argument(
+        '--rebase-pr',
+        dest='rebase_pr',
+        default=False,
+        action=boolean_if_true_negates_others('overwrite_pr'),
+        help=(
+            'whether to rebase an existing pull request branch on the base branch '
+            '(default: --no-rebase-pr) (--rebase-pr implies: --no-overwrite-pr)'
+        ),
+    )
+    group.add_argument(
+        '--overwrite-pr',
+        dest='overwrite_pr',
+        default=False,
+        action=boolean_if_true_negates_others('rebase_pr'),
+        help=(
+            'whether to overwrite an existing pull request branch with new-from-scratch updates '
+            '(default: --no-overwrite-pr) (--overwrite-pr implies: --no-rebase-pr)'
+        ),
+    )
+    group.add_argument(
+        '--pr-command-prefix',
+        dest='pr_command_prefix',
+        metavar='PREFIX',
+        default='@dlp-bot',
+        help=(
+            'the prefix for commands via pull request comments. the command must be separated '
+            'from the prefix by a single space, e.g. "@dlp-bot overwrite" (default: @dlp-bot)'
+        ),
+    )
+    group.add_argument(
+        '--pr-command-allowlist',
+        dest='pr_command_allowlist',
+        metavar='NAME[,NAME...]',
+        help=(
+            'comma-separated list of usernames and/or team names whose commands via pull '
+            'request comments should be acknowledged, e.g. "pukkandan,@yt-dlp/core". '
+            'the default behavior is to acknowledge commands from any user'
+        ),
+    )
 
     return group
 
@@ -304,6 +332,7 @@ def get_update_objects(
     `args` is expected to be the result of an argparse.ArgumentParser configured with (at least):
       - bot.common.configure_remote_target_options()
       - bot.common.configure_update_options()
+      - bot.common.configure_update_pr_options()
       - bot.common.configure_git_options()
       - bot.common.configure_github_options()
       - bot.common.configure_logging_options()
@@ -330,11 +359,14 @@ def get_update_objects(
         'head_label',
         # configure_update_options
         'clone',
-        'overwrite_pr',
         'pr',
-        'rebase_pr',
         'use_current_worktree',
         'verify',
+        # configure_update_pr_options
+        'overwrite_pr',
+        'pr_command_allowlist',
+        'pr_command_prefix',
+        'rebase_pr',
         # configure_git_options
         'git_protocol',
         'base_remote',
@@ -391,10 +423,41 @@ def get_update_objects(
     if not (args.use_current_worktree and args.verify) and not git.bot_working_tree_is_clean():
         raise GitError('manual intervention needed; git current worktree has uncommitted changes')
 
-    # Are we updating an existing PR branch?
-    if args.pr and not args.overwrite_pr and pr.is_open():
+    pr_already_exists = args.pr and pr.is_open()
+    overwrite_pr = args.overwrite_pr
+
+    # Check for PR command comments posted since the last commit
+    if pr_already_exists and not overwrite_pr:
         git.bot_add_or_verify_remote(head_remote, head_forge, pr.head.owner, pr.head.repo)
         git.bot_fetch_origin()
+        comments_list = pr.api.paginated_results(
+            pr.api.list_issue_comments,
+            base.owner,
+            base.repo,
+            pr.number,
+            since=git.bot_get_commit(git.bot_rev_parse(f'{head_remote}/HEAD')).timestamp,
+        )
+        overwrite_pr_comments = [
+            comment for comment in comments_list if f'{args.pr_command_prefix} overwrite' in comment['body']
+        ]
+        if overwrite_pr_comments:
+            if args.pr_command_allowlist:
+                commander_ids = set()
+                for allowed_name in map(str.strip, args.pr_command_allowlist.split(',')):
+                    if allowed_name.startswith('@'):
+                        org, _, team_slug = allowed_name.removeprefix('@').partition('/')
+                        for member in pr.api.paginated_results(pr.api.list_team_members, org, team_slug):
+                            commander_ids.add(member['id'])
+                    else:
+                        commander_ids.add(pr.api.get_a_user(allowed_name)['id'])
+                overwrite_pr = bool(
+                    comment for comment in overwrite_pr_comments if comment['user']['id'] in commander_ids
+                )
+            else:
+                overwrite_pr = True
+
+    # Are we updating an existing PR branch?
+    if pr_already_exists and not overwrite_pr:
         git.bot_overwrite_branch(pr.head.branch, f'{head_remote}/{pr.head.branch}')
 
         git.bot_add_or_verify_remote(base_remote, base_forge, pr.base.owner, pr.base.repo)

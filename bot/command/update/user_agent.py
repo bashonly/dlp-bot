@@ -17,6 +17,7 @@ from bot.command.common import (
     configure_logging_options,
     configure_remote_target_options,
     configure_update_options,
+    configure_update_pr_options,
     get_update_objects,
 )
 from bot.git import (
@@ -75,6 +76,7 @@ def configure_parser(parser: argparse.ArgumentParser):
         default_head_label=DEFAULT_HEAD.label,
     )
     configure_update_options(parser)
+    configure_update_pr_options(parser)
     configure_git_options(parser)
     configure_github_options(parser)
     configure_export_options(parser)

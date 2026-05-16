@@ -18,6 +18,7 @@ from bot.command.common import (
     configure_logging_options,
     configure_remote_target_options,
     configure_update_options,
+    configure_update_pr_options,
     get_update_objects,
 )
 from bot.deps.common import DependenciesUpdateResultType
@@ -128,6 +129,7 @@ def configure_parser(
         default=upgrade_only,
         help=argparse.SUPPRESS,
     )
+    configure_update_pr_options(parser)
     configure_git_options(parser)
     configure_github_options(parser)
     configure_commit_options(parser)
