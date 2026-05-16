@@ -761,6 +761,41 @@ class GitHubAPICaller(BaseAPICaller):
             method='POST',
         )
 
+    # Teams => Members: https://docs.github.com/en/rest/teams/members?apiVersion=2026-03-10
+
+    def list_team_members(
+        self,
+        /,
+        org: str,
+        team_slug: str,
+        *,
+        role: str | None = None,
+        per_page: str | None = None,
+        page: str | None = None,
+    ):
+        """List team members
+
+        Ref: https://docs.github.com/en/rest/teams/members?apiVersion=2026-03-10#list-team-members
+
+        @param org:                     organization name
+        @param team_slug:               the slug of the team name
+        @param role:                    (optional) filter by role: 'all' (default), 'member' or 'maintainer'
+        @param per_page:                (optional) number of results per page (default: 30)
+        @param page:                    (optional) page number (default: 1)
+        @returns                        list of dicts of the team's members
+        """
+        if role and role not in ('member', 'maintainer', 'all'):
+            raise ValueError(f'Invalid role value: {role}')
+
+        return self.call(
+            f'/orgs/{org}/teams/{team_slug}/members',
+            query={
+                'role': role,
+                'per_page': per_page,
+                'page': page,
+            },
+        )
+
 
 class GitHubWebFetcher(BaseAPICaller):
     _WEB_BASE_URL = 'https://github.com/'
