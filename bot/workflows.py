@@ -611,11 +611,13 @@ class ActionsUpdater:
                             workflow.update_pins(old, new)
 
                         workflow.write()
-                        current_workflows.add(workflow)
+                        # Create a copy of the Workflow for serialization so we don't mutate the OG
+                        current_workflows.add(Workflow(workflow.path))
                         updated_paths.add(workflow.path)
 
                 update = {action: (old, new)}
                 for current_workflow in current_workflows:
+                    # Manually set updated_actions to bypass needed_updates check
                     current_workflow.updated_actions = update
 
                 commit_msg = make_incremental_commit_message(
