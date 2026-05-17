@@ -32,6 +32,7 @@ from bot.deps.yt_dlp import YTDLPDependenciesUpdater
 from bot.git import GitError
 from bot.github import (
     RelativeBranch,
+    get_gha_workflow_run_url,
     make_absolute_branch,
 )
 from bot.knowledge import (
@@ -204,6 +205,10 @@ def _real_run(args: argparse.Namespace):
 
     if template := PULL_REQUEST_TEMPLATES.get(pr.base.repo):
         pr.append_to_body(template)
+
+    if gha_url := get_gha_workflow_run_url():
+        pr.append_to_body('---')
+        pr.append_to_body(f'*This pull request is the product of [this GitHub Actions workflow run]({gha_url}).*')
 
     if args.pr:
         if not git.bot_working_tree_is_clean():

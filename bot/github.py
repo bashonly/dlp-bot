@@ -5,6 +5,7 @@ import dataclasses
 import datetime as dt
 import itertools
 import json
+import os
 import pathlib
 import re
 import sys
@@ -1286,3 +1287,12 @@ class GitHubPullRequest:
             return None, None
 
         return lines[0] or None, '\n'.join(lines[2:]) or None
+
+
+def get_gha_workflow_run_url() -> str | None:
+    GHA_VARS = ('GITHUB_SERVER_URL', 'GITHUB_REPOSITORY', 'GITHUB_RUN_ID')
+    kwargs = {key: value for key in GHA_VARS if (value := os.getenv(key))}
+    if not all(key in kwargs for key in GHA_VARS):
+        return None
+
+    return '{GITHUB_SERVER_URL}/{GITHUB_REPOSITORY}/actions/runs/{GITHUB_RUN_ID}'.format(**kwargs)
