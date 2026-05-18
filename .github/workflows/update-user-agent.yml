@@ -46,6 +46,7 @@ jobs:
     env:
       HEAD_BRANCH: ${{ vars.UPDATE_USER_AGENT_BRANCH || needs.output_variables.outputs.default_head_branch }}
       HEAD_OWNER: ${{ vars.HEAD_OWNER || needs.output_variables.outputs.default_head_owner }}
+      SSH_AUTH_SOCK: /tmp/ssh-auth-sock-${{ github.run_id }}/agent
 
     steps:
       - name: Checkout bot repo (${{ github.repository }})
@@ -77,7 +78,7 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_SIGNING_KEY_ID: ${{ vars.SSH_SIGNING_KEY_ID }}
         run: |
-          ssh-agent
+          ssh-agent -a "{SSH_AUTH_SOCK}"
           printf -- '%s\n' "${SSH_PRIVATE_KEY}" | ssh-add -
           git config --global user.signingkey "${SSH_SIGNING_KEY_ID}"
           git config --global gpg.format ssh
