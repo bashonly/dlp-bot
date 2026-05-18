@@ -659,7 +659,7 @@ class ActionsUpdater:
     ) -> str:
         return '\n'.join((
             f'{BOT_BEGIN_HTML_TAG}',
-            f'\nUpdated with `--exclude-newer {self._exclude_newer}`\n' if self._exclude_newer else '',
+            f'\nUpdated with `--exclude-newer {self._exclude_newer.isoformat()}`\n' if self._exclude_newer else '',
             *generate_actions_report(all_updates),
             '',
             *generate_workflows_report(workflows),
