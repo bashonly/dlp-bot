@@ -590,11 +590,15 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         self,
         /,
         all_updates: DependenciesUpdateResultType,
+        merge_commit_message: str,
     ) -> str:
         return '\n'.join((
             f'{BOT_BEGIN_HTML_TAG}\n',
             *self._generate_report(all_updates),
-            f'\n{BOT_END_HTML_TAG}\n\n',
+            '\n```',
+            merge_commit_message,
+            '```\n',
+            f'{BOT_END_HTML_TAG}\n',
         ))
 
     def parse_results(
@@ -613,14 +617,19 @@ class PythonDependenciesUpdater(DependenciesUpdater):
             self.get_previous_updates(existing_commits),
             all_updates,
         )
+        merge_commit_message = make_commit_message(
+            reconciled_updates,
+            prefix=commit_prefix,
+            addendum=commit_addendum,
+        )
 
         return (
-            self._make_pull_request_description(reconciled_updates),
+            self._make_pull_request_description(reconciled_updates, merge_commit_message),
             make_commit_message(
                 all_updates,
                 prefix=commit_prefix,
                 addendum=commit_addendum,
                 serialized_data=self.serialize_results(all_updates),
             ),
-            make_commit_message(reconciled_updates, prefix=commit_prefix, addendum=commit_addendum),
+            merge_commit_message,
         )
