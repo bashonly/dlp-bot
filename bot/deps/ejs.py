@@ -421,14 +421,19 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         /,
         dependencies: DependenciesUpdateResultType,
         dev_dependencies: DependenciesUpdateResultType,
+        merge_commit_message: str,
     ) -> str:
         npm_api = NPMAPICaller(verbose=self.gh.verbose)
 
         return '\n'.join((
             f'{BOT_BEGIN_HTML_TAG}\n',
             *self._generate_report(dependencies, npm_api, header='Dependencies'),
+            '',
             *self._generate_report(dev_dependencies, npm_api, header=' Development dependencies'),
-            f'\n{BOT_END_HTML_TAG}\n\n',
+            '\n```',
+            merge_commit_message,
+            '```\n',
+            f'{BOT_END_HTML_TAG}\n',
         ))
 
     def parse_results(
@@ -466,8 +471,20 @@ class EJSDependenciesUpdater(DependenciesUpdater):
             else:
                 reconciled_dev_updates[package_name] = diff_tuple
 
+        merge_commit_message = make_ejs_commit_message(
+            all_reconciled_updates,
+            reconciled_updates,
+            reconciled_dev_updates,
+            prefix=commit_prefix,
+            addendum=commit_addendum,
+        )
+
         return (
-            self._make_pull_request_description(reconciled_updates, reconciled_dev_updates),
+            self._make_pull_request_description(
+                reconciled_updates,
+                reconciled_dev_updates,
+                merge_commit_message,
+            ),
             make_ejs_commit_message(
                 all_updates,
                 updates,
@@ -476,11 +493,5 @@ class EJSDependenciesUpdater(DependenciesUpdater):
                 addendum=commit_addendum,
                 serialized_data=self.serialize_results(all_updates),
             ),
-            make_ejs_commit_message(
-                all_reconciled_updates,
-                reconciled_updates,
-                reconciled_dev_updates,
-                prefix=commit_prefix,
-                addendum=commit_addendum,
-            ),
+            merge_commit_message,
         )
