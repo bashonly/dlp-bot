@@ -78,6 +78,8 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_SIGNING_KEY_ID: ${{ vars.SSH_SIGNING_KEY_ID }}
         run: |
+          sudo mkdir -p "$(dirname "${SSH_AUTH_SOCK}")"
+          sudo touch "${SSH_AUTH_SOCK}"
           ssh-agent -a "${SSH_AUTH_SOCK}"
           printf -- '%s\n' "${SSH_PRIVATE_KEY}" | ssh-add -
           git config --global user.signingkey "${SSH_SIGNING_KEY_ID}"
