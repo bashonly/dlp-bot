@@ -114,25 +114,6 @@ def get_tag_from_comment(action: Action, sha: str, workflow_text: str) -> str:
     return mobj.group('tag')
 
 
-def make_pull_request_description(
-    workflows: list[Workflow],
-    all_updates: ActionsUpdateResultType,
-    *,
-    prefix: str | None = None,
-    addendum: str | None = None,
-) -> str:
-    return '\n'.join((
-        '<!--\n',
-        make_bulk_commit_message(workflows, all_updates, prefix=prefix, addendum=addendum),
-        '\n-->\n',
-        f'{BOT_BEGIN_HTML_TAG}\n',
-        *generate_actions_report(all_updates),
-        '',
-        *generate_workflows_report(workflows),
-        f'\n{BOT_END_HTML_TAG}\n\n',
-    ))
-
-
 def make_bulk_commit_message(
     workflows: list[Workflow],
     all_updates: ActionsUpdateResultType,
@@ -667,6 +648,27 @@ class ActionsUpdater:
             return None
         return ActionPin(ACTIONLINT_ACTION, sha=mobj.group('sha'), tag=mobj.group('tag'))
 
+    def _make_pull_request_description(
+        self,
+        /,
+        workflows: list[Workflow],
+        all_updates: ActionsUpdateResultType,
+        *,
+        prefix: str | None = None,
+        addendum: str | None = None,
+    ) -> str:
+        return '\n'.join((
+            f'{BOT_BEGIN_HTML_TAG}',
+            f'\nUpdated with `--exclude-newer {self._exclude_newer}`\n' if self._exclude_newer else '',
+            *generate_actions_report(all_updates),
+            '',
+            *generate_workflows_report(workflows),
+            '\n```',
+            make_bulk_commit_message(workflows, all_updates, prefix=prefix, addendum=addendum),
+            '```\n',
+            f'{BOT_END_HTML_TAG}\n',
+        ))
+
     def parse_results(
         self,
         /,
@@ -704,7 +706,7 @@ class ActionsUpdater:
             )
 
         return (
-            make_pull_request_description(
+            self._make_pull_request_description(
                 workflows,
                 reconciled_updates,
                 prefix=commit_prefix,
