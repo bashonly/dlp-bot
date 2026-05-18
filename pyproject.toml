@@ -28,7 +28,7 @@ update = [
     "pyyaml~=6.0.0",
 ]
 update-dependencies = [
-    "uv>=0.9.27",
+    "uv>=0.11.13",
 ]
 
 [dependency-groups]
