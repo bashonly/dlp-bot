@@ -68,6 +68,19 @@ jobs:
           git config --global user.name "${GIT_USER_NAME}"
           git config --global user.email "${GIT_USER_EMAIL}"
 
+      - name: Configure SSH signing key
+        if: ${{ vars.SSH_SIGNING_KEY_ID }}
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh-auth-sock-${{ github.run_id }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_SIGNING_KEY_ID: ${{ vars.SSH_SIGNING_KEY_ID }}
+        run: |
+          ssh-agent -a "${SSH_AUTH_SOCK}"
+          printf -- '%s\n' "${SSH_PRIVATE_KEY}" | ssh-add -
+          git config --global user.signingkey "${SSH_SIGNING_KEY_ID}"
+          git config --global gpg.format ssh
+          git config --global commit.gpgsign true
+
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: "3.14"
@@ -81,6 +94,7 @@ jobs:
       - name: Run bot update ejs
         env:
           GH_TOKEN: ${{ secrets.BOT_TOKEN }}
+          SSH_AUTH_SOCK: /tmp/ssh-auth-sock-${{ github.run_id }}
           WORKING_REPO: ${{ matrix.repo }}
         run: |
           cd dlp-bot

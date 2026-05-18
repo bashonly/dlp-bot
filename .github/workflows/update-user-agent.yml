@@ -46,7 +46,6 @@ jobs:
     env:
       HEAD_BRANCH: ${{ vars.UPDATE_USER_AGENT_BRANCH || needs.output_variables.outputs.default_head_branch }}
       HEAD_OWNER: ${{ vars.HEAD_OWNER || needs.output_variables.outputs.default_head_owner }}
-      SSH_AUTH_SOCK: /tmp/ssh-auth-sock-${{ github.run_id }}
 
     steps:
       - name: Checkout bot repo (${{ github.repository }})
@@ -75,6 +74,7 @@ jobs:
       - name: Configure SSH signing key
         if: ${{ vars.SSH_SIGNING_KEY_ID }}
         env:
+          SSH_AUTH_SOCK: /tmp/ssh-auth-sock-${{ github.run_id }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_SIGNING_KEY_ID: ${{ vars.SSH_SIGNING_KEY_ID }}
         run: |
@@ -96,6 +96,7 @@ jobs:
       - name: Run bot update user-agent
         env:
           GH_TOKEN: ${{ secrets.BOT_TOKEN }}
+          SSH_AUTH_SOCK: /tmp/ssh-auth-sock-${{ github.run_id }}
           WORKING_REPO: ${{ matrix.repo }}
           REBASE_PR: ${{ (vars.UPDATE_USER_AGENT_REBASE && '1') || '0' }}
           OVERWRITE_PR: ${{ (vars.UPDATE_USER_AGENT_OVERWRITE && '1') || '0' }}
