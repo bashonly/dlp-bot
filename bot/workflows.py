@@ -653,9 +653,7 @@ class ActionsUpdater:
         /,
         workflows: list[Workflow],
         all_updates: ActionsUpdateResultType,
-        *,
-        prefix: str | None = None,
-        addendum: str | None = None,
+        commit_message: str,
     ) -> str:
         return '\n'.join((
             f'{BOT_BEGIN_HTML_TAG}',
@@ -664,7 +662,7 @@ class ActionsUpdater:
             '',
             *generate_workflows_report(workflows),
             '\n```',
-            make_bulk_commit_message(workflows, all_updates, prefix=prefix, addendum=addendum),
+            commit_message,
             '```\n',
             f'{BOT_END_HTML_TAG}\n',
         ))
@@ -709,8 +707,7 @@ class ActionsUpdater:
             self._make_pull_request_description(
                 workflows,
                 reconciled_updates,
-                prefix=commit_prefix,
-                addendum=commit_addendum,
+                commit_message,
             ),
             commit_message,
         )
