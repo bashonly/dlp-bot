@@ -660,7 +660,7 @@ class GitHubAPICaller(BaseAPICaller):
 
     # Git database => References: https://docs.github.com/en/rest/git/refs?apiVersion=2026-03-10
 
-    def get_ref(self, /, owner: str, repo: str, ref: str) -> bool:
+    def get_ref(self, /, owner: str, repo: str, ref: str):
         """Get a reference
 
         Ref: https://docs.github.com/en/rest/git/refs?apiVersion=2026-03-10#get-a-reference
@@ -668,9 +668,9 @@ class GitHubAPICaller(BaseAPICaller):
         @param owner:                   repository owner
         @param repo:                    repository name
         @param ref:                     git reference (i.e. heads/{branch} or tags/{tag})
-        @returns                        dict of info about the ref
+        @returns                        dict of info about the ref if found or False if not found
         """
-        return self.call(f'/repos/{owner}/{repo}/git/refs/{ref}')
+        return self.call(f'/repos/{owner}/{repo}/git/refs/{ref}', status_check=[404])
 
     def get_branch_by_name(self, /, owner: str, repo: str, branch_name: str):
         """Get a branch (by name)
@@ -678,7 +678,7 @@ class GitHubAPICaller(BaseAPICaller):
         @param owner:                   repository owner
         @param repo:                    repository name
         @param branch_name:             branch name
-        @returns                        dict of info about the branch
+        @returns                        dict of info about the branch if found or False if not found
         """
         return self.get_ref(owner, repo, f'heads/{branch_name}')
 
@@ -688,7 +688,7 @@ class GitHubAPICaller(BaseAPICaller):
         @param owner:                   repository owner
         @param repo:                    repository name
         @param tag_name:                tag name
-        @returns                        dict of info about the tag
+        @returns                        dict of info about the tag if found or False if not found
         """
         return self.get_ref(owner, repo, f'tags/{tag_name}')
 
