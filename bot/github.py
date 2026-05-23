@@ -1179,6 +1179,9 @@ class GitHubPullRequest:
             merge_method=merge_method,
         )
 
+    def branch_exists(self, /) -> bool:
+        return bool(self.api.get_branch_by_name(self.head.owner, self.head.repo, self.head.branch))
+
     def sync_branch(self, /, *, expected_head_sha: str | None = None) -> bool:
         if not self.is_open():
             print('unable to sync pull request branch as it is not open', file=sys.stderr)

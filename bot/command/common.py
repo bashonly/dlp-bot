@@ -429,11 +429,11 @@ def get_update_objects(
     if not (args.use_current_worktree and args.verify) and not git.bot_working_tree_is_clean():
         raise GitError('manual intervention needed; git current worktree has uncommitted changes')
 
-    pr_already_exists = args.pr and pr.is_open()
+    pr_already_open = args.pr and pr.is_open()
     overwrite_pr = args.overwrite_pr
 
     # Check for PR command comments posted since the last commit
-    if pr_already_exists and not overwrite_pr:
+    if pr_already_open and not overwrite_pr:
         git.bot_add_or_verify_remote(head_remote, head_forge, pr.head.owner, pr.head.repo)
         git.bot_fetch_origin()
         comments_list = pr.api.paginated_results(
@@ -461,7 +461,7 @@ def get_update_objects(
                 overwrite_pr = True
 
     # Are we updating an existing PR branch?
-    if pr_already_exists and not overwrite_pr:
+    if pr_already_open and not overwrite_pr:
         git.bot_overwrite_branch(pr.head.branch, f'{head_remote}/{pr.head.branch}')
 
         git.bot_add_or_verify_remote(base_remote, base_forge, pr.base.owner, pr.base.repo)
@@ -471,6 +471,10 @@ def get_update_objects(
             git.rebase(f'{base_remote}/{pr.base.branch}')
 
         return repo_path, pr, git, git.bot_list_new_commits(f'{base_remote}/{pr.base.branch}')
+
+    # Delete remote head branch if it already exists and there is no open PR
+    if args.pr and not pr_already_open and pr.branch_exists():
+        pr.delete_branch()
 
     # Not updating an existing PR branch
     if not args.use_current_worktree:
