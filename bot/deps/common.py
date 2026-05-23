@@ -188,7 +188,7 @@ class DependenciesUpdater:
         newest: dict[str, str | None] = {}
 
         for commit in sorted(commits, key=lambda c: c.timestamp):
-            updates = self.deserialize_results(commit.body.partition('\n---\n')[2])
+            updates = self.deserialize_results(commit.message.partition('\n---\n')[2])
             for package, (old, new) in updates.items():
                 if package not in oldest:
                     oldest[package] = old

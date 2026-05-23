@@ -794,7 +794,7 @@ class ActionsUpdater:
         newest: dict[Action, ActionPin] = {}
 
         for commit in sorted(commits, key=lambda c: c.timestamp):
-            workflows, updates = self.deserialize_results(commit.body.partition('\n---\n')[2])
+            workflows, updates = self.deserialize_results(commit.message.partition('\n---\n')[2])
             self.reconcile_workflows(workflows, all_workflows)
 
             for action, (old, new) in updates.items():

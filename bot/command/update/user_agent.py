@@ -187,7 +187,7 @@ def _get_original_user_agent_range(
     old_range: tuple[int, int],
 ) -> tuple[int, int]:
     for commit in sorted(commits, key=lambda c: c.timestamp):
-        parsed_yaml = yaml.safe_load(commit.body.partition('\n---\n')[2])
+        parsed_yaml = yaml.safe_load(commit.message.partition('\n---\n')[2])
         if not parsed_yaml:
             continue
 
