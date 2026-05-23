@@ -322,7 +322,7 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         updated_paths.add(self.bun_lock_path)
 
         # Generate deno.lock
-        self.deno('install', f'--minimum-dependency-age=P{self._COOLDOWN_DAYS}D')
+        self.deno('install', '--lockfile-only', f'--minimum-dependency-age=P{self._COOLDOWN_DAYS}D')
         updated_paths.add(self.deno_lock_path)
 
         all_updates = package_diff_dict(
