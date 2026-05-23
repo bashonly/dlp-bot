@@ -270,7 +270,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
         updated_paths.add(self.pyproject_path)
 
         # Generate/upgrade final lockfile that includes pinned extras
-        self.uv('lock', upgrade_arg, env=env)
+        self.uv('lock', env=env)
         updated_paths.add(self.lockfile_path)
 
         # Export bundle requirements; any updates to these are already recorded w/ uv.lock package diff
