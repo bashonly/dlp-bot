@@ -325,10 +325,24 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         self.deno('install', '--lockfile-only', f'--minimum-dependency-age=P{self._COOLDOWN_DAYS}D')
         updated_paths.add(self.deno_lock_path)
 
-        all_updates = package_diff_dict(
+        initial_updates = package_diff_dict(
             get_package_lock_packages(og_lockfile),
             get_package_lock_packages(self.load_package_lock()),
         )
+
+        # Reduce oxfmt/oxlint diff
+        all_updates: DependenciesUpdateResultType = {}
+        for package, diff in initial_updates.items():
+            for basename in ('oxfmt', 'oxlint'):
+                if package.startswith(f'@{basename}/'):
+                    if basename not in initial_updates:
+                        raise BotError(f'mismatch: "{package} {diff}" vs. no update for "{basename}"')
+                    base_diff = initial_updates[basename]
+                    if diff != base_diff:
+                        raise BotError(f'mismatch: "{package} {diff}" vs. "{basename} {base_diff}"')
+                    break
+            else:
+                all_updates[package] = diff
 
         return updated_paths, all_updates
 
