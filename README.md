@@ -3,6 +3,7 @@ automated tools for the dlp org
 
 ## Usage
 
+```
 $ python -m bot --help
 
 usage: bot [-h] [--version] <subcommand> ...
@@ -18,6 +19,8 @@ subcommands:
     pr          Manage GitHub pull requests.
     update      Update actions, dependencies, etc.
     tools       Internal bot tools.
+```
+
 ### pr
 
 ```

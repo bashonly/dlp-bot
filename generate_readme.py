@@ -47,7 +47,9 @@ def generate_help_output(*args: str) -> collections.abc.Generator[str]:
 def yield_readme(header: str, subcommand_map: dict[str, list[str]]) -> collections.abc.Generator[str]:
     yield header
 
+    yield '```\n'
     yield from generate_help_output()
+    yield '```\n\n'
 
     for subcommand, sub_subcommands in subcommand_map.items():
         yield f'### {subcommand}\n\n'
