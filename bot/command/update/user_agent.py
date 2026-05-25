@@ -168,7 +168,7 @@ def _make_ua_pull_request_body_and_commit_message(
     *,
     include_serialized_data: bool = True,
 ) -> tuple[str, str]:
-    body = f'Bump version range {old_range} => {new_range}'
+    body = f'Bump version range {"-".join(map(str, old_range))} => {"-".join(map(str, new_range))}'
 
     serialized_data_lines = [
         '---',
