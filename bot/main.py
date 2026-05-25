@@ -101,7 +101,7 @@ def _add_final_subcmd(
 
 def _main():
     root_parser = argparse.ArgumentParser(
-        prog='dlp-bot',
+        prog='bot',
         description='automated tools for the dlp org',
         # suggest_on_error=True,  # Python>=3.14
     )
