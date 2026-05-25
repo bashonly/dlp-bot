@@ -3,12 +3,27 @@ automated tools for the dlp org
 
 ## Usage
 
+$ python -m bot --help
+
+usage: bot [-h] [--version] <subcommand> ...
+
+automated tools for the dlp org
+
+options:
+  -h, --help    show this help message and exit
+  --version     show program's version number and exit
+
+subcommands:
+  <subcommand>
+    pr          Manage GitHub pull requests.
+    update      Update actions, dependencies, etc.
+    tools       Internal bot tools.
 ### pr
 
 ```
 $ python -m bot pr --help
 
-usage: dlp-bot pr [-h] <subcommand> ...
+usage: bot pr [-h] <subcommand> ...
 
 Manage GitHub pull requests.
 
@@ -26,10 +41,10 @@ pr subcommands:
 ```
 $ python -m bot pr create --help
 
-usage: dlp-bot pr create [-h] -H OWNER[:REPO]:BRANCH [-B OWNER[:REPO]:BRANCH]
-                         [--github-token TOKEN] [--verbose | --no-verbose]
-                         [--title TITLE] [--body BODY] [--template TEMPLATE]
-                         REPOSITORY
+usage: bot pr create [-h] -H OWNER[:REPO]:BRANCH [-B OWNER[:REPO]:BRANCH]
+                     [--github-token TOKEN] [--verbose | --no-verbose]
+                     [--title TITLE] [--body BODY] [--template TEMPLATE]
+                     REPOSITORY
 
 Create (or update) a pull request on an upstream GitHub repository. All
 changes are expected to be already committed and pushed to the remote head
@@ -87,7 +102,7 @@ pull request options:
 ```
 $ python -m bot tools --help
 
-usage: dlp-bot tools [-h] <subcommand> ...
+usage: bot tools [-h] <subcommand> ...
 
 Internal bot tools.
 
@@ -104,8 +119,8 @@ tools subcommands:
 ```
 $ python -m bot tools variables --help
 
-usage: dlp-bot tools variables [-h]
-                               {actions,astring,dependencies,ejs,meriyah,protobug,user-agent}
+usage: bot tools variables [-h]
+                           {actions,astring,dependencies,ejs,meriyah,protobug,user-agent}
 
 Output variables needed for GitHub Actions workflows.
 
@@ -122,7 +137,7 @@ options:
 ```
 $ python -m bot update --help
 
-usage: dlp-bot update [-h] <subcommand> ...
+usage: bot update [-h] <subcommand> ...
 
 Update actions, dependencies, etc.
 
@@ -148,26 +163,24 @@ update subcommands:
 ```
 $ python -m bot update actions --help
 
-usage: dlp-bot update actions [-h] [-H OWNER[:REPO]:BRANCH]
-                              [-B OWNER[:REPO]:BRANCH] [--pr | --no-pr]
-                              [--clone | --no-clone]
-                              [--use-current-worktree | --no-use-current-worktree]
-                              [--verify | --no-verify]
-                              [--exclude-newer COOLDOWN]
-                              [--rebase-pr | --no-rebase-pr]
-                              [--overwrite-pr | --no-overwrite-pr]
-                              [--pr-command-prefix PREFIX]
-                              [--pr-command-allowlist NAME[,NAME...]]
-                              [--git-protocol {ssh,https}]
-                              [--head-remote REMOTE] [--base-remote REMOTE]
-                              [--github-token TOKEN] [--commit-prefix PREFIX]
-                              [--commit-addendum MESSAGE]
-                              [--commit-type {bulk,incremental}]
-                              [--export-pr-body FILEPATH]
-                              [--export-commit-message FILEPATH]
-                              [--export-patches DIRPATH]
-                              [--verbose | --no-verbose]
-                              REPOSITORY [DIRECTORY]
+usage: bot update actions [-h] [-H OWNER[:REPO]:BRANCH]
+                          [-B OWNER[:REPO]:BRANCH] [--pr | --no-pr]
+                          [--clone | --no-clone]
+                          [--use-current-worktree | --no-use-current-worktree]
+                          [--verify | --no-verify] [--exclude-newer COOLDOWN]
+                          [--rebase-pr | --no-rebase-pr]
+                          [--overwrite-pr | --no-overwrite-pr]
+                          [--pr-command-prefix PREFIX]
+                          [--pr-command-allowlist NAME[,NAME...]]
+                          [--git-protocol {ssh,https}] [--head-remote REMOTE]
+                          [--base-remote REMOTE] [--github-token TOKEN]
+                          [--commit-prefix PREFIX] [--commit-addendum MESSAGE]
+                          [--commit-type {bulk,incremental}]
+                          [--export-pr-body FILEPATH]
+                          [--export-commit-message FILEPATH]
+                          [--export-patches DIRPATH]
+                          [--verbose | --no-verbose]
+                          REPOSITORY [DIRECTORY]
 
 Update actions in a GitHub repository's workflows. It is expected that the
 environment has `git` available and the `actions` extra installed.
@@ -302,24 +315,23 @@ logging options:
 ```
 $ python -m bot update astring --help
 
-usage: dlp-bot update astring [-h] [-H OWNER[:REPO]:BRANCH]
-                              [-B OWNER[:REPO]:BRANCH] [--pr | --no-pr]
-                              [--clone | --no-clone]
-                              [--use-current-worktree | --no-use-current-worktree]
-                              [--verify | --no-verify]
-                              [--rebase-pr | --no-rebase-pr]
-                              [--overwrite-pr | --no-overwrite-pr]
-                              [--pr-command-prefix PREFIX]
-                              [--pr-command-allowlist NAME[,NAME...]]
-                              [--git-protocol {ssh,https}]
-                              [--head-remote REMOTE] [--base-remote REMOTE]
-                              [--github-token TOKEN] [--commit-prefix PREFIX]
-                              [--commit-addendum MESSAGE]
-                              [--export-pr-body FILEPATH]
-                              [--export-commit-message FILEPATH]
-                              [--export-patches DIRPATH]
-                              [--verbose | --no-verbose]
-                              [DIRECTORY]
+usage: bot update astring [-h] [-H OWNER[:REPO]:BRANCH]
+                          [-B OWNER[:REPO]:BRANCH] [--pr | --no-pr]
+                          [--clone | --no-clone]
+                          [--use-current-worktree | --no-use-current-worktree]
+                          [--verify | --no-verify]
+                          [--rebase-pr | --no-rebase-pr]
+                          [--overwrite-pr | --no-overwrite-pr]
+                          [--pr-command-prefix PREFIX]
+                          [--pr-command-allowlist NAME[,NAME...]]
+                          [--git-protocol {ssh,https}] [--head-remote REMOTE]
+                          [--base-remote REMOTE] [--github-token TOKEN]
+                          [--commit-prefix PREFIX] [--commit-addendum MESSAGE]
+                          [--export-pr-body FILEPATH]
+                          [--export-commit-message FILEPATH]
+                          [--export-patches DIRPATH]
+                          [--verbose | --no-verbose]
+                          [DIRECTORY]
 
 Update the astring version used in ejs. It is expected that the environment
 has `pnpm`, `npm`, `bun` and `deno` installed.
@@ -438,26 +450,24 @@ logging options:
 ```
 $ python -m bot update dependencies --help
 
-usage: dlp-bot update dependencies [-h] [-H OWNER[:REPO]:BRANCH]
-                                   [-B OWNER[:REPO]:BRANCH] [--pr | --no-pr]
-                                   [--clone | --no-clone]
-                                   [--use-current-worktree | --no-use-current-worktree]
-                                   [--verify | --no-verify]
-                                   [--rebase-pr | --no-rebase-pr]
-                                   [--overwrite-pr | --no-overwrite-pr]
-                                   [--pr-command-prefix PREFIX]
-                                   [--pr-command-allowlist NAME[,NAME...]]
-                                   [--git-protocol {ssh,https}]
-                                   [--head-remote REMOTE]
-                                   [--base-remote REMOTE]
-                                   [--github-token TOKEN]
-                                   [--commit-prefix PREFIX]
-                                   [--commit-addendum MESSAGE]
-                                   [--export-pr-body FILEPATH]
-                                   [--export-commit-message FILEPATH]
-                                   [--export-patches DIRPATH]
-                                   [--verbose | --no-verbose]
-                                   REPOSITORY [DIRECTORY]
+usage: bot update dependencies [-h] [-H OWNER[:REPO]:BRANCH]
+                               [-B OWNER[:REPO]:BRANCH] [--pr | --no-pr]
+                               [--clone | --no-clone]
+                               [--use-current-worktree | --no-use-current-worktree]
+                               [--verify | --no-verify]
+                               [--rebase-pr | --no-rebase-pr]
+                               [--overwrite-pr | --no-overwrite-pr]
+                               [--pr-command-prefix PREFIX]
+                               [--pr-command-allowlist NAME[,NAME...]]
+                               [--git-protocol {ssh,https}]
+                               [--head-remote REMOTE] [--base-remote REMOTE]
+                               [--github-token TOKEN] [--commit-prefix PREFIX]
+                               [--commit-addendum MESSAGE]
+                               [--export-pr-body FILEPATH]
+                               [--export-commit-message FILEPATH]
+                               [--export-patches DIRPATH]
+                               [--verbose | --no-verbose]
+                               REPOSITORY [DIRECTORY]
 
 Update dependencies for a project. It is expected that the environment has the
 necessary package manager installed (e.g. `uv`).
@@ -579,23 +589,20 @@ logging options:
 ```
 $ python -m bot update ejs --help
 
-usage: dlp-bot update ejs [-h] [-H OWNER[:REPO]:BRANCH]
-                          [-B OWNER[:REPO]:BRANCH] [--pr | --no-pr]
-                          [--clone | --no-clone]
-                          [--use-current-worktree | --no-use-current-worktree]
-                          [--verify | --no-verify]
-                          [--rebase-pr | --no-rebase-pr]
-                          [--overwrite-pr | --no-overwrite-pr]
-                          [--pr-command-prefix PREFIX]
-                          [--pr-command-allowlist NAME[,NAME...]]
-                          [--git-protocol {ssh,https}] [--head-remote REMOTE]
-                          [--base-remote REMOTE] [--github-token TOKEN]
-                          [--commit-prefix PREFIX] [--commit-addendum MESSAGE]
-                          [--export-pr-body FILEPATH]
-                          [--export-commit-message FILEPATH]
-                          [--export-patches DIRPATH]
-                          [--verbose | --no-verbose]
-                          [DIRECTORY]
+usage: bot update ejs [-h] [-H OWNER[:REPO]:BRANCH] [-B OWNER[:REPO]:BRANCH]
+                      [--pr | --no-pr] [--clone | --no-clone]
+                      [--use-current-worktree | --no-use-current-worktree]
+                      [--verify | --no-verify] [--rebase-pr | --no-rebase-pr]
+                      [--overwrite-pr | --no-overwrite-pr]
+                      [--pr-command-prefix PREFIX]
+                      [--pr-command-allowlist NAME[,NAME...]]
+                      [--git-protocol {ssh,https}] [--head-remote REMOTE]
+                      [--base-remote REMOTE] [--github-token TOKEN]
+                      [--commit-prefix PREFIX] [--commit-addendum MESSAGE]
+                      [--export-pr-body FILEPATH]
+                      [--export-commit-message FILEPATH]
+                      [--export-patches DIRPATH] [--verbose | --no-verbose]
+                      [DIRECTORY]
 
 Update the ejs version used in yt-dlp. It is expected that the environment has
 `uv` installed.
@@ -715,24 +722,23 @@ logging options:
 ```
 $ python -m bot update meriyah --help
 
-usage: dlp-bot update meriyah [-h] [-H OWNER[:REPO]:BRANCH]
-                              [-B OWNER[:REPO]:BRANCH] [--pr | --no-pr]
-                              [--clone | --no-clone]
-                              [--use-current-worktree | --no-use-current-worktree]
-                              [--verify | --no-verify]
-                              [--rebase-pr | --no-rebase-pr]
-                              [--overwrite-pr | --no-overwrite-pr]
-                              [--pr-command-prefix PREFIX]
-                              [--pr-command-allowlist NAME[,NAME...]]
-                              [--git-protocol {ssh,https}]
-                              [--head-remote REMOTE] [--base-remote REMOTE]
-                              [--github-token TOKEN] [--commit-prefix PREFIX]
-                              [--commit-addendum MESSAGE]
-                              [--export-pr-body FILEPATH]
-                              [--export-commit-message FILEPATH]
-                              [--export-patches DIRPATH]
-                              [--verbose | --no-verbose]
-                              [DIRECTORY]
+usage: bot update meriyah [-h] [-H OWNER[:REPO]:BRANCH]
+                          [-B OWNER[:REPO]:BRANCH] [--pr | --no-pr]
+                          [--clone | --no-clone]
+                          [--use-current-worktree | --no-use-current-worktree]
+                          [--verify | --no-verify]
+                          [--rebase-pr | --no-rebase-pr]
+                          [--overwrite-pr | --no-overwrite-pr]
+                          [--pr-command-prefix PREFIX]
+                          [--pr-command-allowlist NAME[,NAME...]]
+                          [--git-protocol {ssh,https}] [--head-remote REMOTE]
+                          [--base-remote REMOTE] [--github-token TOKEN]
+                          [--commit-prefix PREFIX] [--commit-addendum MESSAGE]
+                          [--export-pr-body FILEPATH]
+                          [--export-commit-message FILEPATH]
+                          [--export-patches DIRPATH]
+                          [--verbose | --no-verbose]
+                          [DIRECTORY]
 
 Update the meriyah version used in ejs. It is expected that the environment
 has `pnpm`, `npm`, `bun` and `deno` installed.
@@ -851,24 +857,24 @@ logging options:
 ```
 $ python -m bot update protobug --help
 
-usage: dlp-bot update protobug [-h] [-H OWNER[:REPO]:BRANCH]
-                               [-B OWNER[:REPO]:BRANCH] [--pr | --no-pr]
-                               [--clone | --no-clone]
-                               [--use-current-worktree | --no-use-current-worktree]
-                               [--verify | --no-verify]
-                               [--rebase-pr | --no-rebase-pr]
-                               [--overwrite-pr | --no-overwrite-pr]
-                               [--pr-command-prefix PREFIX]
-                               [--pr-command-allowlist NAME[,NAME...]]
-                               [--git-protocol {ssh,https}]
-                               [--head-remote REMOTE] [--base-remote REMOTE]
-                               [--github-token TOKEN] [--commit-prefix PREFIX]
-                               [--commit-addendum MESSAGE]
-                               [--export-pr-body FILEPATH]
-                               [--export-commit-message FILEPATH]
-                               [--export-patches DIRPATH]
-                               [--verbose | --no-verbose]
-                               [DIRECTORY]
+usage: bot update protobug [-h] [-H OWNER[:REPO]:BRANCH]
+                           [-B OWNER[:REPO]:BRANCH] [--pr | --no-pr]
+                           [--clone | --no-clone]
+                           [--use-current-worktree | --no-use-current-worktree]
+                           [--verify | --no-verify]
+                           [--rebase-pr | --no-rebase-pr]
+                           [--overwrite-pr | --no-overwrite-pr]
+                           [--pr-command-prefix PREFIX]
+                           [--pr-command-allowlist NAME[,NAME...]]
+                           [--git-protocol {ssh,https}] [--head-remote REMOTE]
+                           [--base-remote REMOTE] [--github-token TOKEN]
+                           [--commit-prefix PREFIX]
+                           [--commit-addendum MESSAGE]
+                           [--export-pr-body FILEPATH]
+                           [--export-commit-message FILEPATH]
+                           [--export-patches DIRPATH]
+                           [--verbose | --no-verbose]
+                           [DIRECTORY]
 
 Update the protobug version used in yt-dlp. It is expected that the
 environment has `uv` installed.
@@ -988,23 +994,23 @@ logging options:
 ```
 $ python -m bot update user-agent --help
 
-usage: dlp-bot update user-agent [-h] [-H OWNER[:REPO]:BRANCH]
-                                 [-B OWNER[:REPO]:BRANCH] [--pr | --no-pr]
-                                 [--clone | --no-clone]
-                                 [--use-current-worktree | --no-use-current-worktree]
-                                 [--verify | --no-verify]
-                                 [--rebase-pr | --no-rebase-pr]
-                                 [--overwrite-pr | --no-overwrite-pr]
-                                 [--pr-command-prefix PREFIX]
-                                 [--pr-command-allowlist NAME[,NAME...]]
-                                 [--git-protocol {ssh,https}]
-                                 [--head-remote REMOTE] [--base-remote REMOTE]
-                                 [--github-token TOKEN]
-                                 [--export-pr-body FILEPATH]
-                                 [--export-commit-message FILEPATH]
-                                 [--export-patches DIRPATH]
-                                 [--verbose | --no-verbose]
-                                 [DIRECTORY]
+usage: bot update user-agent [-h] [-H OWNER[:REPO]:BRANCH]
+                             [-B OWNER[:REPO]:BRANCH] [--pr | --no-pr]
+                             [--clone | --no-clone]
+                             [--use-current-worktree | --no-use-current-worktree]
+                             [--verify | --no-verify]
+                             [--rebase-pr | --no-rebase-pr]
+                             [--overwrite-pr | --no-overwrite-pr]
+                             [--pr-command-prefix PREFIX]
+                             [--pr-command-allowlist NAME[,NAME...]]
+                             [--git-protocol {ssh,https}]
+                             [--head-remote REMOTE] [--base-remote REMOTE]
+                             [--github-token TOKEN]
+                             [--export-pr-body FILEPATH]
+                             [--export-commit-message FILEPATH]
+                             [--export-patches DIRPATH]
+                             [--verbose | --no-verbose]
+                             [DIRECTORY]
 
 Update the default user-agent version range used by yt-dlp.
 
