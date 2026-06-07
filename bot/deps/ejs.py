@@ -230,7 +230,6 @@ class EJSProject(Project):
 class EJSDependenciesUpdater(DependenciesUpdater):
     _COOLDOWN_DAYS = 7
     _COOLDOWN_MINS = _COOLDOWN_DAYS * 60 * 24  # pnpm
-    _PNPM_COOLDOWN_KEY = 'minimumReleaseAge'
 
     def __init__(
         self,
@@ -257,14 +256,6 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         self.load_package_json = self.project.load_package_json
         self.load_package_lock = self.project.load_package_lock
 
-    def _verify_pnpm_cooldown(self, /) -> bool:
-        if yaml is None:
-            raise BotError('the pyyaml package (yaml library) is required')
-
-        config = yaml.safe_load(self.pnpm_config_path.read_text())
-
-        return config.get(self._PNPM_COOLDOWN_KEY) == self._COOLDOWN_MINS
-
     def update(
         self,
         /,
@@ -277,21 +268,16 @@ class EJSDependenciesUpdater(DependenciesUpdater):
 
         updated_paths: set[pathlib.Path] = set()
 
-        # Create (or verify there is) a pnpm config file with the appropriate cooldown policy
-        if not self.pnpm_config_path.is_file():
-            self.pnpm_config_path.write_text(f'{self._PNPM_COOLDOWN_KEY}: {self._COOLDOWN_MINS}\n')
-        elif not self._verify_pnpm_cooldown():
-            raise BotError(f'pnpm cooldown is not configured as {self._COOLDOWN_DAYS} days')
-
         # Upgrade package(s)
+        pnpm_upgrade_args = ('upgrade', '--latest', f'--config.minimumReleaseAge={self._COOLDOWN_MINS}')
         if upgrade_only:
             old_version = self.load_package_json()['dependencies'][upgrade_only]
-            self.pnpm('upgrade', '--latest', upgrade_only)
+            self.pnpm(*pnpm_upgrade_args, upgrade_only)
             new_version = self.load_package_json()['dependencies'][upgrade_only]
             if old_version == new_version:
                 return updated_paths, {}
         else:
-            self.pnpm('upgrade', '--latest', '--dev')
+            self.pnpm(*pnpm_upgrade_args, '--dev')
         updated_paths.add(self.package_json_path)
 
         if self.node_modules_path.is_dir():
@@ -303,8 +289,7 @@ class EJSDependenciesUpdater(DependenciesUpdater):
             self.package_lock_path.unlink()
 
         # Generate base package-lock.json
-        self.npm('config', 'set', f'min-release-age={self._COOLDOWN_DAYS}')
-        self.npm('install')
+        self.npm('install', f'--min-release-age={self._COOLDOWN_DAYS}')
         updated_paths.add(self.package_lock_path)
 
         # Generate new pnpm-lock.yaml from package-lock.json
