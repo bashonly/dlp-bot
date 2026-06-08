@@ -62,13 +62,12 @@ SERVICED_REPOS: dict[str, dict[str, typing.Any]] = {
     },
     'dlp-bot': {
         'forge': 'github',
-        'owner': 'yt-dlp',
+        'owner': 'bashonly',
         'repo': 'dlp-bot',
         'default_branch': 'main',
         'commit_prefix': None,
         'commit_addendum': None,
-        # TODO: add these services once dlp-bot repo exists in the org: 'actions', 'dependencies'
-        'services': [],
+        'services': ['actions', 'dependencies'],
     },
 }
 
