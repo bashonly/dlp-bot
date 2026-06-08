@@ -118,10 +118,18 @@ def _real_run(args: argparse.Namespace):
         ),
     )
 
+    last_cooldown = None
+    if args.verify:
+        if not existing_commits:
+            raise VerificationError('There are no commits to verify')
+        last_cooldown = ActionsUpdater.get_previous_cooldown(existing_commits)
+        if last_cooldown is None:
+            raise VerificationError('There was no recorded cooldown timestamp with which to verify')
+
     updater = ActionsUpdater.from_git_and_pr(
         git=git,
         pr=pr,
-        exclude_newer=args.exclude_newer,
+        exclude_newer=last_cooldown or args.exclude_newer,
     )
 
     formatted_prefix = safe_format(args.commit_prefix or repo_info['commit_prefix'], category='ci')
