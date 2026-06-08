@@ -35,6 +35,8 @@ from bot.knowledge import (
 from bot.utils import (
     BaseAPICaller,
     BotError,
+    parse_datetime_from_cooldown,
+    rfc3339_zulu,
 )
 
 EXTRAS_TABLE = 'project.optional-dependencies'
@@ -366,6 +368,16 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         self.load_pyproject_toml = self.project.load_pyproject_toml
         self.load_lockfile_toml = self.project.load_lockfile_toml
 
+        if (
+            not self._explicit_cooldown
+            and (tool := self.load_pyproject_toml().get('tool'))
+            and isinstance(tool, dict)
+            and (uv := tool.get('uv'))
+            and isinstance(uv, dict)
+            and (exclude_newer := uv.get('exclude-newer'))
+        ):
+            self._exclude_newer = parse_datetime_from_cooldown(exclude_newer)
+
     def replace_pyproject_toml_table_and_write(
         self,
         /,
@@ -391,31 +403,15 @@ class PythonDependenciesUpdater(DependenciesUpdater):
 
         return {}
 
-    def _get_last_cooldown_timestamp(self, /) -> str | None:
-        lockfile_toml = self.load_lockfile_toml()
-        if (
-            (options := lockfile_toml.get('options'))
-            and isinstance(options, dict)
-            and (last_cooldown_timestamp := options.get('exclude-newer'))
-            and isinstance(last_cooldown_timestamp, str)
-        ):
-            return last_cooldown_timestamp
-
-        return None
-
-    def _get_environment(self, /, verify: bool, upgrade_only: str | None) -> dict[str, str] | None:
-        if not verify and not upgrade_only:
+    def _get_environment(self, /) -> dict[str, str] | None:
+        if not self._explicit_cooldown:
             return None
 
-        # If only verifying or only upgrading packages that are cooldown-exempt,
-        # then use the previous cooldown timestamp that was recorded in uv.lock
-        if last_cooldown_timestamp := self._get_last_cooldown_timestamp():
-            return {
-                **os.environ,
-                'UV_EXCLUDE_NEWER': last_cooldown_timestamp,
-            }
-
-        return None
+        # If verifying, use the cooldown timestamp that was recorded in the previous commit
+        return {
+            **os.environ,
+            'UV_EXCLUDE_NEWER': rfc3339_zulu(self._exclude_newer),
+        }
 
     def update(
         self,
@@ -432,10 +428,9 @@ class PythonDependenciesUpdater(DependenciesUpdater):
 
         pre_upgrade_data = self._pre_upgrade(updated_paths, upgrade_only=upgrade_only, verify=verify)
 
-        env = self._get_environment(verify=verify, upgrade_only=upgrade_only)
-
         # Upgrade packages in lockfile
         upgrade_arg = f'--upgrade-package={upgrade_only}' if upgrade_only else '--upgrade'
+        env = self._get_environment()
         self.uv('lock', upgrade_arg, env=env)
         updated_paths.add(self.lockfile_path)
 

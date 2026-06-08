@@ -496,12 +496,11 @@ def get_update_objects(
             git.bot_fetch_upstream()
             git.bot_overwrite_branch(pr.head.branch, f'{base_remote}/{pr.base.branch}')
 
-        existing_commits = []
+            return repo_path, pr, git, []
 
-    elif not args.verify:
-        # Get pre-existing commits since we are using the local current worktree
+    # Need to get pre-existing commits since we are verifying and/or using the local current worktree
+    if not args.clone:
         git.bot_add_or_verify_remote(base_remote, base_forge, pr.base.owner, pr.base.repo)
         git.bot_fetch_upstream()
-        existing_commits = git.bot_list_new_commits(f'{base_remote}/{pr.base.branch}')
 
-    return repo_path, pr, git, existing_commits
+    return repo_path, pr, git, git.bot_list_new_commits(f'{base_remote}/{pr.base.branch}')

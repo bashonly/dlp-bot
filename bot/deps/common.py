@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import contextlib
+import datetime as dt
 import pathlib
 import re
 
 from bot.git import Commit
-from bot.utils import BotError
+from bot.utils import (
+    BotError,
+    rfc3339_zulu,
+)
 
 try:
     import yaml
@@ -121,17 +125,23 @@ class DependenciesUpdater:
     Required positional argument(s):
 
     @param project:         an instance of Project or a Project subclass
+    @param exclude_newer:   (optional) dependency cooldown as datetime object
     """
 
+    _COOLDOWN_KEY = 'cooldown'
     _UPDATES_KEY = 'dependencies'
 
     def __init__(
         self,
         /,
         project,
+        *,
+        exclude_newer: dt.datetime | None = None,
         **kwargs,
     ):
         self.project = project
+        self._exclude_newer: dt.datetime = exclude_newer or dt.datetime.now(tz=dt.UTC)
+        self._explicit_cooldown: bool = exclude_newer is not None
 
     def update(
         self,
@@ -167,14 +177,21 @@ class DependenciesUpdater:
         if yaml is None:
             raise BotError('the pyyaml package (yaml library) is required')
 
-        return yaml.safe_dump({self._UPDATES_KEY: updates}, sort_keys=False)
+        return yaml.safe_dump(
+            {
+                self._COOLDOWN_KEY: rfc3339_zulu(self._exclude_newer),
+                self._UPDATES_KEY: updates,
+            },
+            sort_keys=False,
+        )
 
-    def deserialize_results(self, /, text: str) -> DependenciesUpdateResultType:
+    @classmethod
+    def deserialize_results(cls, /, text: str) -> DependenciesUpdateResultType:
         if yaml is None:
             raise BotError('the pyyaml package (yaml library) is required')
 
         parsed_yaml = yaml.safe_load(text) or {}
-        serialized_updates = parsed_yaml.get(self._UPDATES_KEY, {})
+        serialized_updates = parsed_yaml.get(cls._UPDATES_KEY, {})
         updates: DependenciesUpdateResultType = {}
 
         for package, (old, new) in serialized_updates.items():
@@ -182,13 +199,14 @@ class DependenciesUpdater:
 
         return updates
 
-    def get_previous_updates(self, /, commits: list[Commit]) -> DependenciesUpdateResultType:
+    @classmethod
+    def get_previous_updates(cls, /, commits: list[Commit]) -> DependenciesUpdateResultType:
         previous_updates: DependenciesUpdateResultType = {}
         oldest: dict[str, str | None] = {}
         newest: dict[str, str | None] = {}
 
         for commit in sorted(commits, key=lambda c: c.timestamp):
-            updates = self.deserialize_results(commit.message.partition('\n---\n')[2])
+            updates = cls.deserialize_results(commit.message.partition('\n---\n')[2])
             for package, (old, new) in updates.items():
                 if package not in oldest:
                     oldest[package] = old
@@ -199,9 +217,20 @@ class DependenciesUpdater:
 
         return previous_updates
 
+    @classmethod
+    def get_previous_cooldown(cls, /, commits: list[Commit]) -> dt.datetime | None:
+        if yaml is None:
+            raise BotError('the pyyaml package (yaml library) is required')
+
+        last_commit = sorted(commits, key=lambda c: c.timestamp)[-1]
+        parsed_yaml = yaml.safe_load(last_commit.message.partition('\n---\n')[2]) or {}
+        if deserialized_cooldown := parsed_yaml.get(cls._COOLDOWN_KEY):
+            return dt.datetime.fromisoformat(deserialized_cooldown)
+
+        return None
+
+    @staticmethod
     def reconcile_updates(
-        self,
-        /,
         previous_updates: DependenciesUpdateResultType,
         new_updates: DependenciesUpdateResultType,
     ) -> DependenciesUpdateResultType:

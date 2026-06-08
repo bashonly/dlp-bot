@@ -32,6 +32,7 @@ from bot.utils import (
     VerificationError,
     is_sha1,
     parse_owner_and_repo,
+    rfc3339_zulu,
 )
 
 try:
@@ -97,12 +98,8 @@ def get_major_version(tag: str) -> int:
     return 0
 
 
-def release_is_too_hot(release: dict[str, typing.Any], cooldown: dt.datetime | None) -> bool:
-    if cooldown is None:
-        return False
-
+def release_is_too_hot(release: dict[str, typing.Any], cooldown: dt.datetime) -> bool:
     timestamp = release['published_at'] if release['immutable'] else release['updated_at']
-
     return dt.datetime.fromisoformat(timestamp) > cooldown
 
 
@@ -299,6 +296,7 @@ class Workflow:
 
 
 class ActionsUpdater:
+    _COOLDOWN_KEY = 'cooldown'
     _UPDATES_KEY = 'actions'
     _WORKFLOWS_KEY = 'workflows'
 
@@ -319,7 +317,7 @@ class ActionsUpdater:
         self.repo_owner = repo_owner
         self.repo_name = repo_name
         self.workflows_path = self.git.repo_path / GIT_FORGES[GIT_FORGE]['workflows_directory']
-        self._exclude_newer = exclude_newer
+        self._exclude_newer: dt.datetime = exclude_newer or dt.datetime.now(tz=dt.UTC)
 
         self._latest_cache: dict[Action, ActionPin] = {}
         self._actions_cache: dict[tuple[str, str], Action] = {
@@ -657,7 +655,7 @@ class ActionsUpdater:
     ) -> str:
         return '\n'.join((
             f'{BOT_BEGIN_HTML_TAG}',
-            f'\nUpdated with `--exclude-newer {self._exclude_newer.isoformat()}`\n' if self._exclude_newer else '',
+            f'\nUpdated with `--exclude-newer {rfc3339_zulu(self._exclude_newer)}`\n',
             *generate_actions_report(all_updates),
             '',
             *generate_workflows_report(workflows),
@@ -740,6 +738,7 @@ class ActionsUpdater:
 
         return yaml.safe_dump(
             {
+                self._COOLDOWN_KEY: rfc3339_zulu(self._exclude_newer),
                 self._UPDATES_KEY: serialized_updates,
                 self._WORKFLOWS_KEY: serialized_workflows,
             },
@@ -807,9 +806,20 @@ class ActionsUpdater:
 
         return all_workflows, previous_updates
 
+    @classmethod
+    def get_previous_cooldown(cls, /, commits: list[Commit]) -> dt.datetime | None:
+        if yaml is None:
+            raise BotError('the pyyaml package (yaml library) is required')
+
+        last_commit = sorted(commits, key=lambda c: c.timestamp)[-1]
+        parsed_yaml = yaml.safe_load(last_commit.message.partition('\n---\n')[2]) or {}
+        if deserialized_cooldown := parsed_yaml.get(cls._COOLDOWN_KEY):
+            return dt.datetime.fromisoformat(deserialized_cooldown)
+
+        return None
+
+    @staticmethod
     def reconcile_workflows(
-        self,
-        /,
         previous_workflows: list[Workflow],
         new_workflows: list[Workflow],
     ):
@@ -824,9 +834,8 @@ class ActionsUpdater:
                     continue
                 new_workflow.updated_actions[updated_action] = (old, new)
 
+    @staticmethod
     def reconcile_updates(
-        self,
-        /,
         previous_updates: ActionsUpdateResultType,
         new_updates: ActionsUpdateResultType,
     ) -> ActionsUpdateResultType:

@@ -21,7 +21,11 @@ from bot.command.common import (
     configure_update_pr_options,
     get_update_objects,
 )
-from bot.deps.common import DependenciesUpdateResultType
+from bot.deps.common import (
+    DependenciesUpdater,
+    DependenciesUpdateResultType,
+    Project,
+)
 from bot.deps.dlp_bot import DLPBotDependenciesUpdater
 from bot.deps.ejs import (
     EJSDependenciesUpdater,
@@ -61,14 +65,14 @@ DEFAULT_HEAD = RelativeBranch(owner=DEFAULT_HEAD_OWNER, branch=DEFAULT_HEAD_BRAN
 
 SUPPORTED_REPOS = [k for k, v in SERVICED_REPOS.items() if UPDATE_NAME in v['services']]
 
-PROJECTS = {
+PROJECTS: dict[str, type[Project]] = {
     'dlp-bot': PythonProject,
     'ejs': EJSProject,
     'Pyinstaller-Builds': PythonProject,
     'yt-dlp': PythonProject,
 }
 
-UPDATERS = {
+UPDATERS: dict[str, type[DependenciesUpdater]] = {
     'dlp-bot': DLPBotDependenciesUpdater,
     'ejs': EJSDependenciesUpdater,
     'Pyinstaller-Builds': DLPBotDependenciesUpdater,
@@ -171,9 +175,19 @@ def _real_run(args: argparse.Namespace):
         repo_path,
         verbose=args.verbose,
     )
+
+    last_cooldown = None
+    if args.verify:
+        if not existing_commits:
+            raise VerificationError('There are no commits to verify')
+        last_cooldown = UPDATERS[args.repository].get_previous_cooldown(existing_commits)
+        if last_cooldown is None:
+            raise VerificationError('There was no recorded cooldown timestamp with which to verify')
+
     updater = UPDATERS[args.repository](
         project,
         gh=pr.api,
+        exclude_newer=last_cooldown,
     )
 
     updated_paths, all_updates = updater.update(

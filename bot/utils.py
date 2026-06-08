@@ -184,6 +184,10 @@ def parse_datetime_from_cooldown(cooldown: str | None) -> dt.datetime:
     return dt.datetime.now(tz=dt.UTC) - dt.timedelta(**parts)
 
 
+def rfc3339_zulu(datetime_obj: dt.datetime) -> str:
+    return datetime_obj.isoformat().replace('+00:00', 'Z')
+
+
 def table_a_raza(header: tuple[str, ...], rows: list[tuple[str, ...]]) -> collections.abc.Generator[str]:
     widths = [len(col) for col in header]
 

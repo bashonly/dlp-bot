@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import collections.abc
+import datetime as dt
 import json
+import math
 import os
 import pathlib
 import shlex
@@ -32,6 +34,8 @@ from bot.knowledge import (
 from bot.utils import (
     BaseAPICaller,
     BotError,
+    parse_datetime_from_cooldown,
+    rfc3339_zulu,
 )
 
 try:
@@ -162,8 +166,10 @@ class EJSProject(Project):
         self._deno_exe = self._find_exe('deno')
         self.package_json_path = self.project_path / 'package.json'
         self.package_lock_path = self.project_path / 'package-lock.json'
+        self.npm_config_path = self.project_path / '.npmrc'
         self.bun_lock_path = self.project_path / 'bun.lock'
         self.deno_lock_path = self.project_path / 'deno.lock'
+        self.deno_config_path = self.project_path / 'deno.json'
         self.pnpm_lock_path = self.project_path / 'pnpm-lock.yaml'
         self.pnpm_config_path = self.project_path / 'pnpm-workspace.yaml'
         self.node_modules_path = self.project_path / 'node_modules'
@@ -186,6 +192,13 @@ class EJSProject(Project):
             return {}
 
         with self.package_lock_path.open('rb') as f:
+            return json.load(f)
+
+    def load_deno_config(self, /) -> dict[str, typing.Any]:
+        if not self.deno_config_path.is_file():
+            return {}
+
+        with self.deno_config_path.open('rb') as f:
             return json.load(f)
 
     def _run_exe(
@@ -228,8 +241,8 @@ class EJSProject(Project):
 
 
 class EJSDependenciesUpdater(DependenciesUpdater):
-    _COOLDOWN_DAYS = 7
-    _COOLDOWN_MINS = _COOLDOWN_DAYS * 60 * 24  # pnpm
+    _DEFAULT_COOLDOWN_DAYS = 7
+    _DEFAULT_COOLDOWN_MINS = _DEFAULT_COOLDOWN_DAYS * 60 * 24  # pnpm
 
     def __init__(
         self,
@@ -248,13 +261,19 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         self.deno = self.project.deno
         self.package_json_path = self.project.package_json_path
         self.package_lock_path = self.project.package_lock_path
+        self.npm_config_path = self.project.npm_config_path
         self.bun_lock_path = self.project.bun_lock_path
         self.deno_lock_path = self.project.deno_lock_path
+        self.deno_config_path = self.project.deno_config_path
         self.pnpm_lock_path = self.project.pnpm_lock_path
         self.pnpm_config_path = self.project.pnpm_config_path
         self.node_modules_path = self.project.node_modules_path
         self.load_package_json = self.project.load_package_json
         self.load_package_lock = self.project.load_package_lock
+        self.load_deno_config = self.project.load_deno_config
+
+        if not self._explicit_cooldown and (exclude_newer := self.load_deno_config().get('minimumDependencyAge')):
+            self._exclude_newer = parse_datetime_from_cooldown(exclude_newer)
 
     def update(
         self,
@@ -269,15 +288,20 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         updated_paths: set[pathlib.Path] = set()
 
         # Upgrade package(s)
-        pnpm_upgrade_args = ('upgrade', '--latest', f'--config.minimumReleaseAge={self._COOLDOWN_MINS}')
+        pnpm_args = ['upgrade', '--latest']
+        if self._explicit_cooldown:
+            cooldown_mins = math.ceil((dt.datetime.now(tz=dt.UTC) - self._exclude_newer).total_seconds() / 60)
+            pnpm_args.append(f'--config.minimumReleaseAge={cooldown_mins}')
+        else:
+            pnpm_args.append(f'--config.minimumReleaseAge={self._DEFAULT_COOLDOWN_MINS}')
         if upgrade_only:
             old_version = self.load_package_json()['dependencies'][upgrade_only]
-            self.pnpm(*pnpm_upgrade_args, upgrade_only)
+            self.pnpm(*pnpm_args, upgrade_only)
             new_version = self.load_package_json()['dependencies'][upgrade_only]
             if old_version == new_version:
                 return updated_paths, {}
         else:
-            self.pnpm(*pnpm_upgrade_args, '--dev')
+            self.pnpm(*pnpm_args, '--dev')
         updated_paths.add(self.package_json_path)
 
         if self.node_modules_path.is_dir():
@@ -289,7 +313,15 @@ class EJSDependenciesUpdater(DependenciesUpdater):
             self.package_lock_path.unlink()
 
         # Generate base package-lock.json
-        self.npm('install', f'--min-release-age={self._COOLDOWN_DAYS}')
+        if self._explicit_cooldown:
+            # Work around npm bug / conflict between --min-release-age and --before
+            # See https://github.com/npm/cli/issues/9005
+            npm_config = self.npm_config_path.read_text()
+            self.npm_config_path.unlink()
+            self.npm('install', f'--before={rfc3339_zulu(self._exclude_newer)}')
+            self.npm_config_path.write_text(npm_config)
+        else:
+            self.npm('install', f'--min-release-age={self._DEFAULT_COOLDOWN_DAYS}')
         updated_paths.add(self.package_lock_path)
 
         # Generate new pnpm-lock.yaml from package-lock.json
@@ -307,7 +339,12 @@ class EJSDependenciesUpdater(DependenciesUpdater):
         updated_paths.add(self.bun_lock_path)
 
         # Generate deno.lock
-        self.deno('install', '--lockfile-only', f'--minimum-dependency-age=P{self._COOLDOWN_DAYS}D')
+        deno_args = ['install', '--lockfile-only']
+        if self._explicit_cooldown:
+            deno_args.append(f'--minimum-dependency-age={rfc3339_zulu(self._exclude_newer)}')
+        else:
+            deno_args.append(f'--minimum-dependency-age=P{self._DEFAULT_COOLDOWN_DAYS}D')
+        self.deno(*deno_args)
         updated_paths.add(self.deno_lock_path)
 
         initial_updates = package_diff_dict(
