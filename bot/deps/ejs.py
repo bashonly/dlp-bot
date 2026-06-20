@@ -352,10 +352,10 @@ class EJSDependenciesUpdater(DependenciesUpdater):
             get_package_lock_packages(self.load_package_lock()),
         )
 
-        # Reduce oxfmt/oxlint diff
+        # Reduce esbuild/oxfmt/oxlint diff
         all_updates: DependenciesUpdateResultType = {}
         for package, diff in initial_updates.items():
-            for basename in ('oxfmt', 'oxlint'):
+            for basename in ('esbuild', 'oxfmt', 'oxlint'):
                 if package.startswith(f'@{basename}/'):
                     if basename not in initial_updates:
                         raise BotError(f'mismatch: "{package} {diff}" vs. no update for "{basename}"')
