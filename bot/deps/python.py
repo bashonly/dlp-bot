@@ -510,7 +510,10 @@ class PythonDependenciesUpdater(DependenciesUpdater):
         for package, (old, new) in sorted(all_updates.items()):
             if package in PYTHON_PACKAGES:
                 github_info = PYTHON_PACKAGES[package]
-                changelog = ''
+                changelog = github_info.get('changelog_url') or ''
+                if changelog:
+                    name = github_info.get('changelog_name') or 'changelog'
+                    changelog = f'[{name}](<{changelog}>)'
 
             else:
                 project_urls = pypi.get_project(package)['info']['project_urls']
@@ -551,8 +554,9 @@ class PythonDependenciesUpdater(DependenciesUpdater):
 
             compare = ''
             if github_info and old and new:
-                old_tag_matches = denormalized_tags(old, 'v')
-                new_tag_matches = denormalized_tags(new, 'v')
+                tag_prefix = github_info.get('tag_prefix') or 'v'
+                old_tag_matches = denormalized_tags(old, tag_prefix)
+                new_tag_matches = denormalized_tags(new, tag_prefix)
 
                 tags_list = self.gh.paginated_results(
                     self.gh.list_repository_tags,

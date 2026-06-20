@@ -93,12 +93,45 @@ GIT_FORGES: dict[str, dict[str, typing.Any]] = {
 
 # XXX: keep 'pyinstaller[*]' keys in sync with bot.deps.yt_dlp.PYINSTALLER_BUILDS_TARGETS values
 PYTHON_PACKAGES: dict[str, dict[str, str]] = {
-    'deno': {'owner': 'denoland', 'repo': 'deno'},
-    'protobug': {'owner': 'yt-dlp', 'repo': 'protobug'},
-    'pyinstaller[win_amd64]': {'owner': 'pyinstaller', 'repo': 'pyinstaller'},
-    'pyinstaller[win32]': {'owner': 'pyinstaller', 'repo': 'pyinstaller'},
-    'pyinstaller[win_arm64]': {'owner': 'pyinstaller', 'repo': 'pyinstaller'},
-    'yt-dlp-ejs': {'owner': 'yt-dlp', 'repo': 'ejs'},
+    'deno': {
+        'owner': 'denoland',
+        'repo': 'deno',
+        'changelog_name': 'Releases.md',
+        'changelog_url': 'https://github.com/denoland/deno/blob/main/Releases.md',
+    },
+    'hatchling': {
+        'owner': 'pypa',
+        'repo': 'hatch',
+        'tag_prefix': 'hatchling-v',
+        'changelog_name': 'history',
+        'changelog_url': 'https://hatch.pypa.io/dev/history/hatchling/',
+    },
+    'protobug': {
+        'owner': 'yt-dlp',
+        'repo': 'protobug',
+    },
+    'pyinstaller[win_amd64]': {
+        'owner': 'pyinstaller',
+        'repo': 'pyinstaller',
+        'changelog_name': 'CHANGES.html',
+        'changelog_url': 'https://pyinstaller.org/en/stable/CHANGES.html',
+    },
+    'pyinstaller[win32]': {
+        'owner': 'pyinstaller',
+        'repo': 'pyinstaller',
+        'changelog_name': 'CHANGES.html',
+        'changelog_url': 'https://pyinstaller.org/en/stable/CHANGES.html',
+    },
+    'pyinstaller[win_arm64]': {
+        'owner': 'pyinstaller',
+        'repo': 'pyinstaller',
+        'changelog_name': 'CHANGES.html',
+        'changelog_url': 'https://pyinstaller.org/en/stable/CHANGES.html',
+    },
+    'yt-dlp-ejs': {
+        'owner': 'yt-dlp',
+        'repo': 'ejs',
+    },
 }
 
 NPM_PACKAGES: dict[str, dict[str, str]] = {
@@ -110,12 +143,28 @@ NPM_PACKAGES: dict[str, dict[str, str]] = {
     '@types/node': {},
     '@types/react': {},
     # eslint/js monorepo packages
-    'eslint-scope': {'owner': 'eslint', 'repo': 'js', 'tag_prefix': 'eslint-scope-v'},
-    'eslint-visitor-keys': {'owner': 'eslint', 'repo': 'js', 'tag_prefix': 'eslint-visitor-keys-v'},
-    'espree': {'owner': 'eslint', 'repo': 'js', 'tag_prefix': 'espree-v'},
+    'eslint-scope': {
+        'owner': 'eslint',
+        'repo': 'js',
+        'tag_prefix': 'eslint-scope-v',
+    },
+    'eslint-visitor-keys': {
+        'owner': 'eslint',
+        'repo': 'js',
+        'tag_prefix': 'eslint-visitor-keys-v',
+    },
+    'espree': {
+        'owner': 'eslint',
+        'repo': 'js',
+        'tag_prefix': 'espree-v',
+    },
     # oxlint and oxfmt are released together under a single GH tag that uses only oxlint's version
     'oxfmt': {},
-    'oxlint': {'owner': 'oxc-project', 'repo': 'oxc', 'tag_prefix': 'apps_v'},
+    'oxlint': {
+        'owner': 'oxc-project',
+        'repo': 'oxc',
+        'tag_prefix': 'apps_v',
+    },
 }
 
 ACTIONS: dict[str, dict[str, typing.Any]] = {
