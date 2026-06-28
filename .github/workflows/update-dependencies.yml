@@ -51,7 +51,7 @@ jobs:
       - name: Checkout bot repo (${{ github.repository }})
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
-          path: dlp-bot
+          path: service-bot
           persist-credentials: false
 
       - name: Checkout working repo (${{ format('{0}/{1}', env.HEAD_OWNER, matrix.repo) }})
@@ -90,9 +90,9 @@ jobs:
 
       - name: Install Python requirements
         run: |
-          python -m pip install -U --require-hashes -r "dlp-bot/requirements/pip.txt"
-          python -m pip install -U --require-hashes -r "dlp-bot/requirements/update.txt"
-          python -m pip install -U --require-hashes -r "dlp-bot/requirements/update-dependencies.txt"
+          python -m pip install -U --require-hashes -r "service-bot/requirements/pip.txt"
+          python -m pip install -U --require-hashes -r "service-bot/requirements/update.txt"
+          python -m pip install -U --require-hashes -r "service-bot/requirements/update-dependencies.txt"
 
       - name: Install pnpm
         if: matrix.repo == 'ejs'
@@ -133,7 +133,7 @@ jobs:
           UPDATE_PR_COMMAND_PREFIX: ${{ vars.UPDATE_PR_COMMAND_PREFIX || '@dlp-bot' }}
           UPDATE_PR_COMMAND_ALLOWLIST: ${{ vars.UPDATE_PR_COMMAND_ALLOWLIST || '@yt-dlp/core' }}
         run: |
-          cd dlp-bot
+          cd service-bot
           optional_args=()
           if (( REBASE_PR )); then
             optional_args+=(--rebase-pr)

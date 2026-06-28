@@ -48,7 +48,7 @@ jobs:
       - name: Checkout bot repo (${{ github.repository }})
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
-          path: dlp-bot
+          path: service-bot
           persist-credentials: false
 
       - name: Checkout working repo (${{ format('{0}/{1}', env.HEAD_OWNER, matrix.repo) }})
@@ -87,9 +87,9 @@ jobs:
 
       - name: Install Python requirements
         run: |
-          python -m pip install -U --require-hashes -r "dlp-bot/requirements/pip.txt"
-          python -m pip install -U --require-hashes -r "dlp-bot/requirements/update.txt"
-          python -m pip install -U --require-hashes -r "dlp-bot/requirements/update-dependencies.txt"
+          python -m pip install -U --require-hashes -r "service-bot/requirements/pip.txt"
+          python -m pip install -U --require-hashes -r "service-bot/requirements/update.txt"
+          python -m pip install -U --require-hashes -r "service-bot/requirements/update-dependencies.txt"
 
       - name: Install pnpm
         uses: pnpm/action-setup@91ab88e2619ed1f46221f0ba42d1492c02baf788  # v6.0.6
@@ -122,7 +122,7 @@ jobs:
           SSH_AUTH_SOCK: /tmp/ssh-auth-sock-${{ github.run_id }}
           WORKING_REPO: ${{ matrix.repo }}
         run: |
-          cd dlp-bot
+          cd service-bot
           python -m bot update astring \
             --pr \
             --verbose \
