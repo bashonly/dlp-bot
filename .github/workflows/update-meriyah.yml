@@ -18,11 +18,11 @@ jobs:
       matrix: ${{ steps.variables.outputs.matrix }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: "3.14"
 
@@ -46,13 +46,13 @@ jobs:
 
     steps:
       - name: Checkout bot repo (${{ github.repository }})
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           path: service-bot
           persist-credentials: false
 
       - name: Checkout working repo (${{ format('{0}/{1}', env.HEAD_OWNER, matrix.repo) }})
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           repository: ${{ format('{0}/{1}', env.HEAD_OWNER, matrix.repo) }}
           path: ${{ matrix.repo }}
@@ -81,7 +81,7 @@ jobs:
           git config --global gpg.format ssh
           git config --global commit.gpgsign true
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: "3.14"
 
@@ -92,7 +92,7 @@ jobs:
           python -m pip install -U --require-hashes -r "service-bot/requirements/update-dependencies.txt"
 
       - name: Install pnpm
-        uses: pnpm/action-setup@91ab88e2619ed1f46221f0ba42d1492c02baf788  # v6.0.6
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6.0.9
         with:
           # need >=10.16.0 for cooldown support
           version: "10.33.4"
