@@ -106,6 +106,13 @@ PYTHON_PACKAGES: dict[str, dict[str, str]] = {
         'changelog_name': 'history',
         'changelog_url': 'https://hatch.pypa.io/dev/history/hatchling/',
     },
+    'mutagen': {
+        'owner': 'quodlibet',
+        'repo': 'mutagen',
+        'tag_prefix': 'release-',
+        'changelog_name': 'changelog.html',
+        'changelog_url': 'https://mutagen.readthedocs.io/en/latest/changelog.html',
+    },
     'protobug': {
         'owner': 'yt-dlp',
         'repo': 'protobug',
