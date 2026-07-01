@@ -324,16 +324,15 @@ BOT_END_HTML_TAG = '<!-- END dlp-bot generated section -->'
 
 PULL_REQUEST_TEMPLATES: dict[str, str] = {
     'yt-dlp': """\
-<details open><summary>Template</summary> <!-- OPEN is intentional -->
+<details><summary>Template</summary>
 
-
-### Before submitting a *pull request* make sure you have:
-- [x] At least skimmed through [contributing guidelines](https://github.com/yt-dlp/yt-dlp/blob/master/CONTRIBUTING.md#developer-instructions) including [yt-dlp coding conventions](https://github.com/yt-dlp/yt-dlp/blob/master/CONTRIBUTING.md#yt-dlp-coding-conventions)
-- [x] [Searched](https://github.com/yt-dlp/yt-dlp/search?q=is%3Apr&type=Issues) the bugtracker for similar pull requests
+### Before submitting a *pull request* you must attest to the following:
+- [x] This pull request complies with yt-dlp's [**NO AI / NO LLM POLICY**](https://github.com/yt-dlp/yt-dlp/blob/master/CONTRIBUTING.md#no-ai--no-llm-policy)
+- [x] I have skimmed through [contributing guidelines](https://github.com/yt-dlp/yt-dlp/blob/master/CONTRIBUTING.md#developer-instructions) including [yt-dlp coding conventions](https://github.com/yt-dlp/yt-dlp/blob/master/CONTRIBUTING.md#yt-dlp-coding-conventions)
+- [x] I have [searched](https://github.com/yt-dlp/yt-dlp/search?q=is%3Apr&type=Issues) the tracker for similar pull requests
 
 ### In order to be accepted and merged into yt-dlp each piece of code must be in public domain or released under [Unlicense](http://unlicense.org/). Check those that apply and remove the others:
-- [x] I am the original author of the code in this PR, and I am willing to release it under [Unlicense](http://unlicense.org/)
-- [x] I am not the original author of the code in this PR, but it is in the public domain or released under [Unlicense](http://unlicense.org/): This pull request was created by a bot that was written by the maintainers of this project
+- [x] This pull request is the product of an automated tool written by the yt-dlp maintainers who release any resulting code under [Unlicense](http://unlicense.org/)
 
 ### What is the purpose of your *pull request*? Check those that apply and remove the others:
 - [x] Automated maintenance
