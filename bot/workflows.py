@@ -371,7 +371,7 @@ class ActionsUpdater:
         if not is_sha1(commit_sha):
             return None
         owner, repo = parse_owner_and_repo(full_action_name)
-        if owner in ('.', '.github'):
+        if owner in ('$', '.', '.github'):
             return None
         if owner == self.repo_owner and repo == self.repo_name:
             return None
