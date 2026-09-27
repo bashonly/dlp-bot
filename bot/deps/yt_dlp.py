@@ -65,7 +65,7 @@ BUNDLE_TARGETS = {
     'default': BuildTarget(
         extras=['default'],
         # PyPy bundles cffi, which is a transitive dep of brotlicffi, which is only required for PyPy
-        prune_packages=['cffi'],
+        omit_packages=['cffi'],
     ),
     'curl-cffi': BuildTarget(
         extras=['default', 'curl-cffi'],
@@ -259,7 +259,7 @@ class YTDLPDependenciesUpdater(PythonDependenciesUpdater):
                 extras=[extra_name],
                 bare=True,
                 # PyPy bundles cffi, which is a transitive dep of brotlicffi, which is only required for PyPy
-                prune_packages=['cffi'] if extra_name == 'default' else [],
+                omit_packages=['cffi'] if extra_name == 'default' else [],
             )
 
         # Write the finalized pyproject.toml
