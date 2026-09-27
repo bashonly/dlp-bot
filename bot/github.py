@@ -19,7 +19,7 @@ from bot.utils import (
     filter_dict,
 )
 
-GITHUB_URL_RE = re.compile(r'https://github\.com/(?P<owner>[0-9a-zA-Z_-]+)/(?P<repo>[0-9a-zA-Z_-]+)')
+GITHUB_URL_RE = re.compile(r'https://github\.com/(?!sponsors/)(?P<owner>[0-9a-zA-Z_-]+)/(?P<repo>[0-9a-zA-Z_-]+)')
 
 
 class GitHubError(BotError):
