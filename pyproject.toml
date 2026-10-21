@@ -70,6 +70,11 @@ allow-direct-references = true
 [tool.uv]
 exclude-newer = "7 days"
 
+[tool.uv.exclude-newer-package]
+certifi = false
+pip = false
+uv = false
+
 [tool.ruff]
 line-length = 120
 
