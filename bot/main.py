@@ -103,7 +103,7 @@ def _main():
     root_parser = argparse.ArgumentParser(
         prog='bot',
         description='automated tools for the dlp org',
-        # suggest_on_error=True,  # Python>=3.14
+        suggest_on_error=True,
     )
     root_parser.add_argument(
         '--version',

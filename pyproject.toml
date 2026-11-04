@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dlp-bot"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
     {name = "bashonly", email = "bashonly@protonmail.com"},
 ]
 description = "automated tools for the dlp org"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 keywords = [
     "actions",
     "bot",
@@ -33,17 +33,17 @@ update-dependencies = [
 
 [dependency-groups]
 mypy = [
-    "mypy~=1.20.0",
+    "mypy~=2.4.0",
 ]
 ruff = [
-    "ruff~=0.15.0",
+    "ruff~=0.17.0",
 ]
 dev = [
     {include-group = "mypy"},
     {include-group = "ruff"},
 ]
 pyflakes = [
-    "pyflakes~=3.4.0",
+    "pyflakes~=4.1.0",
 ]
 pip = [
     "pip",
@@ -189,7 +189,7 @@ avoid-escape = false
 quote-style = "single"
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 
 [[tool.mypy.overrides]]
 module = [

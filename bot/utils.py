@@ -237,5 +237,5 @@ def safe_format(s: str | None, /, *args, **kwargs) -> str | None:
 
     try:
         return formatter.vformat(s, safe_args, SafeFormatDict(kwargs))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return s

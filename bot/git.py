@@ -240,7 +240,7 @@ class Git:
         git_args = ['get-url', '--push' if push else '--no-push', '--', remote_name]
         try:
             return self.remote(*git_args)[0]
-        except (GitError, IndexError):
+        except GitError, IndexError:
             raise GitError(f'unable to get remote URL for "{remote_name}"')
 
     def bot_add_or_verify_remote(
@@ -335,7 +335,7 @@ class Git:
                 subject=get_field('s')[0],
                 body='\n'.join(get_field('b')),
             )
-        except (AttributeError, IndexError, TypeError, ValueError):
+        except AttributeError, IndexError, TypeError, ValueError:
             raise GitError(f'unable to get commit info for "{revision}"')
 
     def bot_list_new_commits(self, /, base: str, *, head: str | None = None) -> list[Commit]:
