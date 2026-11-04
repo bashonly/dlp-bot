@@ -116,6 +116,13 @@ PYTHON_PACKAGES: dict[str, dict[str, str]] = {
         'owner': 'yt-dlp',
         'repo': 'protobug',
     },
+    'pycparser': {
+        'owner': 'eliben',
+        'repo': 'pycparser',
+        'tag_prefix': 'release_v',
+        'changelog_name': 'releases',
+        'changelog_url': 'https://github.com/eliben/pycparser/releases',
+    },
     'pyinstaller[win_amd64]': {
         'owner': 'pyinstaller',
         'repo': 'pyinstaller',
