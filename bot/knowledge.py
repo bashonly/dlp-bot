@@ -164,12 +164,15 @@ NPM_PACKAGES: dict[str, dict[str, str]] = {
         'repo': 'js',
         'tag_prefix': 'espree-v',
     },
-    # oxlint and oxfmt are released together under a single GH tag that uses only oxlint's version
-    'oxfmt': {},
+    'oxfmt': {
+        'owner': 'oxc-project',
+        'repo': 'oxc',
+        'tag_prefix': 'oxfmt_v',
+    },
     'oxlint': {
         'owner': 'oxc-project',
         'repo': 'oxc',
-        'tag_prefix': 'apps_v',
+        'tag_prefix': 'oxlint_v',
     },
 }
 
