@@ -43,7 +43,7 @@ dev = [
     {include-group = "ruff"},
 ]
 pyflakes = [
-    "pyflakes~=4.1.0",
+    "pyflakes~=4.0.0",
 ]
 pip = [
     "pip",
